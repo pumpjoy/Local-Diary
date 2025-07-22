@@ -1,0 +1,10 @@
+﻿<Styles
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:this="using:Local_Diary">
+    <Style Selector="Border.avalonia_calendar_view_gridcell:pointerover">
+        <Setter Property="Background">
+            <SolidColorBrush Opacity="0.2" Color="Gray" />
+        </Setter>
+    </Style>
+</Styles>

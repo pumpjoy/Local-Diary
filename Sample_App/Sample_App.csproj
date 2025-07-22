@@ -24,5 +24,6 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.1"/>
+	<ProjectReference Include="../Local_Diary/Local_Diary.csproj"/>
     </ItemGroup>
 </Project>

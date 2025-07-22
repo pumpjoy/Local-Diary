@@ -3,6 +3,9 @@
   <component name="AvaloniaProject">
     <option name="projectPerEditor">
       <map>
+        <entry key="Local_Diary/Local_Diary.axaml" value="Sample_App/Sample_App.csproj" />
+        <entry key="Local_Diary/MainWindow.axaml" value="Local_Diary/Local_Diary.csproj" />
+        <entry key="Sample_App/App.axaml" value="Sample_App/Sample_App.csproj" />
         <entry key="Sample_App/Views/MainWindow.axaml" value="Sample_App/Sample_App.csproj" />
       </map>
     </option>

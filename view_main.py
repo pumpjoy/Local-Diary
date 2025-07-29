@@ -12,6 +12,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize
 
 import datetime
+from dateutil.relativedelta import relativedelta
+
 
 from helper.utils import *
 from helper.config_manager import UserConfiguration
@@ -96,9 +98,9 @@ class MyWindow(QWidget):
 
 
         # --- Local - Calendar month navigation signals ---
-        self.bt_month_last.clicked.connect(lambda: print("Button One Clicked!"))
-        self.bt_today.clicked.connect(self._on_bt_today_clicked)
-        self.bt_month_next.clicked.connect(lambda: print("Button Three Clicked!"))
+        self.bt_month_last.clicked.connect(lambda: self._update_calendar_cells(mode="prev"))
+        self.bt_today.clicked.connect(lambda: self._update_calendar_cells(mode="today"))
+        self.bt_month_next.clicked.connect(lambda: self._update_calendar_cells(mode="next"))
     
     # --- Main Page Logic ---
     def _create_main_page_widget(self):
@@ -113,8 +115,9 @@ class MyWindow(QWidget):
         self.bt_setting.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         
         # --- Widgets for Horizontal Layout 1 (Header Month) ---
-        self.view_month = datetime.datetime.now() 
-        self.main_label = QLabel(self.view_month.strftime("%d %B %Y"))
+        this_date = self.app_config.get_setting('current_month', datetime.datetime.now())
+        this_date = datetime.datetime.fromisoformat(this_date)  
+        self.main_label = QLabel(this_date.strftime('%B %Y'))
         
         self.main_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self.main_label.setContentsMargins(0,0,0,0)
@@ -124,6 +127,8 @@ class MyWindow(QWidget):
         self.bt_month_last.setFixedSize(30, 30)
         self.bt_month_last.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.bt_today = QPushButton("Today")
+        self.bt_today.setFixedSize(80, 30)
+        self.bt_today.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.bt_month_next = QPushButton(">")
         self.bt_month_next.setFixedSize(30, 30)
         self.bt_month_next.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -166,7 +171,7 @@ class MyWindow(QWidget):
             else: 
                 days = DAY_OF_WEEK[-1:] + DAY_OF_WEEK[:-1]  # Sunday first 
 
-            this_date = datetime.datetime.now()
+             
             this_month = generate_month_dates(this_date, self.first_day_is_monday) # Get current month  
             current_theme = self.app_config.get_setting('appearance.theme', 'dark')
             
@@ -252,7 +257,7 @@ class MyWindow(QWidget):
     
     def _on_bt_today_clicked(self):
         """Updates the main label with the current time."""
-        current_time = datetime.datetime.now()
+        current_time = datetime.datetime.now().date()
         new_text = f" {current_time.strftime('%Y-%m-%d %H:%M:%S')}"
         self.main_label.setText(new_text)
         print(f"Main label updated to: {new_text}") 
@@ -285,13 +290,28 @@ class MyWindow(QWidget):
         # Tell the settings page widget to update its theme-dependent styles
         self.settings_page_widget.update_theme_style(current_theme)
 
-    def _update_calendar_cells(self):
+    def _update_calendar_cells(self, mode="None"):
         """
         Updates the calendar cell labels based on the current first day setting.
         """
         self.first_day_is_monday = not self.app_config.get_setting('settings_page.first_day_is_sunday', True)
-        today = datetime.datetime.now().date() 
-        this_month = generate_month_dates(self.view_month, self.first_day_is_monday)
+        today = datetime.datetime.now().date()
+        
+        # mode = prev, today, next
+        
+        this_date = self.app_config.get_setting('current_month', datetime.datetime.now())
+        this_date = datetime.datetime.fromisoformat(this_date) 
+        
+        if mode == "prev":
+            this_date = this_date - relativedelta(months=1)  
+        elif mode == "today":
+            this_date = datetime.datetime.now().date()
+        elif mode == "next":
+            this_date = this_date + relativedelta(months=1)
+         
+        self.main_label.setText(this_date.strftime('%B %Y'))
+        self.app_config.set_setting('current_month', this_date.isoformat()) 
+        this_month = generate_month_dates(this_date, self.first_day_is_monday)
 
         # Update day header cells (row 0)
         if self.first_day_is_monday:
@@ -310,8 +330,7 @@ class MyWindow(QWidget):
                 cell_widget = self.calendar_widgets_reference.get((row, col))
                 idx = (row - 1) * self.cal_month_num_cols + col
                 if cell_widget and idx < len(this_month):
-                    cell_date = this_month[idx]
-                    print(cell_date)
+                    cell_date = this_month[idx] 
                     cell_widget.setText(str(cell_date.day))
                     current_theme = self.app_config.get_setting('appearance.theme', 'dark')
                     combined_style = (
@@ -320,7 +339,7 @@ class MyWindow(QWidget):
                     cell_widget.setStyleSheet(combined_style)
 
                     # Check if this cell is within the current month
-                    if cell_date.month != self.view_month.month: 
+                    if cell_date.month != this_date.month: 
                         cell_widget.setStyleSheet(MAIN_CALENDAR_DATE_NOT_THIS_MONTH_LIGHT \
                                                   if current_theme == "light" else MAIN_CALENDAR_DATE_NOT_THIS_MONTH_DARK) 
 

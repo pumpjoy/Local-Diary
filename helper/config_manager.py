@@ -134,7 +134,7 @@ class UserConfiguration:
                 "language": "en_US" 
             },
             "first_day_is_sunday": False, # Default Monday for week start
-
+            "current_month": datetime.datetime.now().isoformat(), # Default to current month
 
             # For future app versions' settings with their defaults
             "new_feature_status": "disabled"

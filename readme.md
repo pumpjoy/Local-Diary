@@ -1,4 +1,4 @@
-I have been using Notion and part of it is as daily journaling, but recently I switched to other platforms but the daily journaling part is still the best in Notion (for me anyways). 
+I have been using Notion and part of it is as daily journaling, but recently I switched to other platforms and the daily journaling part is still the best in Notion (for me anyways). 
 Hence this project, will just be a lightweight version of specifically that.
 
 - Currently doing this on PYQT6 (I gave up on .Net and AngularJS for now; I'm more proficient in py and C/C++; hence Qt.

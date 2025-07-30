@@ -1,5 +1,6 @@
 # TODO: Light theme on check box of settings are not dark pixels
 # Will not do that because I will never use light theme.
+# Test
 
 
 import sys

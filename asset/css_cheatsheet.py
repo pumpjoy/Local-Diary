@@ -53,8 +53,8 @@ GLOBAL_DARK_QSS = """
 
 # --- Main Page Specific Styles ---
 # Styles for the main header label (QLabel)
-MAIN_HEADER_LIGHT_QSS = "background-color: lightgray; color: black; font-weight: bold; padding: 2px; font-size: 14px;"
-MAIN_HEADER_DARK_QSS = "background-color: #444444; color: white; font-weight: bold; padding: 2px; font-size: 14px;"
+MAIN_LABEL_LIGHT_QSS = "background-color: lightgray; color: black; font-weight: bold; padding: 4px; font-size: 14px;"
+MAIN_LABEL_DARK_QSS = "background-color: #444444; color: white; font-weight: bold; padding: 4px; font-size: 14px;"
 
 # Styles for main page Calendar 
 MAIN_CALENDAR_DAY_CELL_LIGHT = f"""
@@ -92,7 +92,6 @@ QWidget {{
 """ 
 
  
-
 MAIN_CALENDAR_DATE_NOT_THIS_MONTH_LIGHT = f"""
 QWidget {{ 
     background-color: lightgray; 
@@ -132,13 +131,4 @@ SETTINGS_PAGE_DARK_QSS = """
     QLabel { /* Labels within SettingsPageWidget */
         color: #E0E0E0;
     }
-"""
-
-# Styles for the SettingsPageWidget's header label
-SETTINGS_HEADER_LIGHT_QSS = "background-color: #ADD8E6; color: black; font-weight: bold; padding: 5px;"
-SETTINGS_HEADER_DARK_QSS = "background-color: #555555; color: white; font-weight: bold; padding: 5px;"
-
-
-# Styles for QLineEdit within SettingsPageWidget
-SETTINGS_LINE_EDIT_LIGHT_QSS = "QLineEdit { background-color: white; color: black; border: 1px solid #AAA; }"
-SETTINGS_LINE_EDIT_DARK_QSS = "QLineEdit { background-color: #444444; color: #E0E0E0; border: 1px solid #666; }"
+""" 

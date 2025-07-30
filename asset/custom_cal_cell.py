@@ -21,7 +21,7 @@ class CalendarCellWidget(QWidget):
         self.main_layout = QVBoxLayout(self) 
         self.main_layout.setContentsMargins(0, 0, 0, 0) 
 
-        # Create a QHBoxLayout
+        # Date number header
         self.is_today = is_today
         self.date_label = QLabel(text=text) 
         self.date_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
@@ -29,6 +29,10 @@ class CalendarCellWidget(QWidget):
 
         self.main_layout.addWidget(self.date_label)
         self.main_layout.stretch(1)
+
+        # --- Actual content --- 
+        # Get from json
+
 
     def cus_set_text(self, text):
         self.date_label.setText(text)

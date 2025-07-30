@@ -8,8 +8,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction
 
 from asset.css_cheatsheet import (
+    MAIN_LABEL_LIGHT_QSS, MAIN_LABEL_DARK_QSS, 
     SETTINGS_PAGE_LIGHT_QSS, SETTINGS_PAGE_DARK_QSS,
-    SETTINGS_HEADER_LIGHT_QSS, SETTINGS_HEADER_DARK_QSS, 
 )
 
 
@@ -32,29 +32,30 @@ class SettingsPageWidget(QWidget):
 
         # Header section for the settings page
         settings_header_h_layout = QHBoxLayout()
-        self.settings_header_label = QLabel("Settings")
-        self.settings_header_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.settings_header_label.setStyleSheet("background-color: #ADD8E6; font-weight: bold; padding: 5px;")
+        self.main_label = QLabel("Settings")
+        self.main_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.main_label.setStyleSheet("background-color: #ADD8E6; font-weight: bold; padding: 5px;")
         self.back_button = QPushButton("Back to Main")
-        settings_header_h_layout.addWidget(self.settings_header_label, 1)
+        settings_header_h_layout.addWidget(self.main_label, 1)
         settings_header_h_layout.addWidget(self.back_button)
-        settings_page_v_layout.addLayout(settings_header_h_layout)
 
-        settings_page_v_layout.addSpacing(20)
-
-        # Settings form section
-        settings_form_layout = QGridLayout()
-        settings_form_layout.setContentsMargins(0, 0, 0, 0)
-        settings_form_layout.setSpacing(10)
-
+        # --- Content ---
         # Theme Setting
         self.theme_checkbox = QCheckBox("Use Light Mode") 
-        settings_form_layout.addWidget(self.theme_checkbox, 0, 0)
 
         # First day is Monday Setting
         self.first_day_is_sunday = QCheckBox("First day of week is Sunday")
+        
+        # Actual View
+        settings_form_layout = QGridLayout()
+        settings_form_layout.setContentsMargins(0, 0, 0, 0)
+        settings_form_layout.setSpacing(10)
+        settings_form_layout.addWidget(self.theme_checkbox, 0, 0)
         settings_form_layout.addWidget(self.first_day_is_sunday, 1, 0)
- 
+        
+
+        settings_page_v_layout.addLayout(settings_header_h_layout)
+        settings_page_v_layout.addSpacing(20)
         settings_page_v_layout.addLayout(settings_form_layout)
         settings_page_v_layout.addStretch(1) # Push content to the top
 
@@ -87,9 +88,9 @@ class SettingsPageWidget(QWidget):
         Updates the theme-dependent styles of this widget and its children.
         Called by the main window.
         """
-        if theme_name == 'dark':
-            self.setStyleSheet(SETTINGS_PAGE_DARK_QSS) 
-            self.settings_header_label.setStyleSheet(SETTINGS_HEADER_DARK_QSS)  
-        else: # light theme
+        if theme_name == 'light':
             self.setStyleSheet(SETTINGS_PAGE_LIGHT_QSS)
-            self.settings_header_label.setStyleSheet(SETTINGS_HEADER_LIGHT_QSS)  
+            self.main_label.setStyleSheet(MAIN_LABEL_LIGHT_QSS)  
+        else: # dark theme
+            self.setStyleSheet(SETTINGS_PAGE_DARK_QSS) 
+            self.main_label.setStyleSheet(MAIN_LABEL_DARK_QSS)  

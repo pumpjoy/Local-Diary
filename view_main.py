@@ -17,17 +17,20 @@ from dateutil.relativedelta import relativedelta
 
 from helper.utils import *
 from helper.config_manager import UserConfiguration
+from helper.diary_property_manager import DiaryPropertyConfiguration
 
 from view_setting import SettingsPageWidget
 
 from asset.css_cheatsheet import (
     GLOBAL_DARK_QSS, GLOBAL_LIGHT_QSS,
-    MAIN_HEADER_DARK_QSS, MAIN_HEADER_LIGHT_QSS, 
+    MAIN_LABEL_DARK_QSS, MAIN_LABEL_LIGHT_QSS, 
     MAIN_CALENDAR_DAY_CELL_LIGHT, MAIN_CALENDAR_DAY_CELL_DARK,
     MAIN_CALENDAR_TODAY_CELL_LIGHT, MAIN_CALENDAR_TODAY_CELL_DARK,
     MAIN_CALENDAR_DATE_NOT_THIS_MONTH_LIGHT, MAIN_CALENDAR_DATE_NOT_THIS_MONTH_DARK,
 )
 from asset.custom_cal_cell import CalendarCellWidget, CalendarHeaderWidget
+from view_custom_property import CustomPropertyWidget
+from view_custom_property_view import CustomPropertyViewWidget
 
 class MyWindow(QWidget):
     def __init__(self):
@@ -37,11 +40,14 @@ class MyWindow(QWidget):
         self.setGeometry(100, 100, 1024, 768)
         self.setMinimumSize(self.minimum_window_size)
 
-        # Load the configuration manager
+        # Load the configuration managers
         self.app_config = UserConfiguration(
             organization_name="TestOrg",
             application_name="Local_Diary"
         )
+
+        self.diary_config = DiaryPropertyConfiguration()
+
         # Apply initial window size from config
         initial_window_size = self.app_config.get_setting('appearance.window_size', [800, 600])
         self.resize(initial_window_size[0], initial_window_size[1])
@@ -49,8 +55,12 @@ class MyWindow(QWidget):
         # --- QStackedWidget --- 
         self.main_page_widget = None
         self.settings_page_widget = None
+        self.custom_property_page_widget = None
+        self.custom_property_page_view_widget = None
         self.main_page_index = 0
         self.settings_page_index = 1
+        self.custom_diary_property_index = 2 # Customize one's diary template
+        self.custom_diary_view = 3 # Calendar view's CustomCellWidget visually see what properties
         self.stacked_widget = None # Initialized in _setup_layouts
 
         # --- Calendar month settings ---
@@ -74,15 +84,20 @@ class MyWindow(QWidget):
     def _setup_layouts(self):
         """Arranges widgets within their respective layouts."""
         # --- Stacked Widget ---
+        
+        self.main_page_widget = self._create_main_page_widget()
+        self.settings_page_widget = SettingsPageWidget(self.app_config)
+        self.custom_property_page_widget = CustomPropertyWidget(self.app_config, self.diary_config) # 2 modes, either customize or view mode (reusing it)
+        self.custom_property_page_view_widget = CustomPropertyViewWidget()
+        
         self.stacked_widget = QStackedWidget(self)
         self.stacked_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.main_page_widget = self._create_main_page_widget()
         self.stacked_widget.addWidget(self.main_page_widget)
-
-        
-        self.settings_page_widget = SettingsPageWidget(self.app_config)
         self.stacked_widget.addWidget(self.settings_page_widget)
+        self.stacked_widget.addWidget(self.custom_property_page_widget)
+        self.stacked_widget.addWidget(self.custom_property_page_view_widget)
         
+
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(self.stacked_widget)  
     
@@ -92,9 +107,14 @@ class MyWindow(QWidget):
         """Connects signals of widgets to their respective slots (methods)."""
         # --- Setting related signals ---
         self.bt_setting.clicked.connect(self._show_settings_page)
-         # Connect signals from the separate SettingsPageWidget instance
+        # Connect signals from the separate SettingsPageWidget instance
         self.settings_page_widget.back_to_main_requested.connect(self._show_main_page)
         self.settings_page_widget.settings_saved.connect(self._handle_settings_saved_from_settings_page)
+
+        # --- Custom Property related signals --- 
+        self.bt_custom_property.clicked.connect(self._show_custom_property_page)
+        # Connect signals from the separate SettingsPageWidget instance
+        self.custom_property_page_widget.back_to_main_requested.connect(self._show_main_page) 
 
 
         # --- Local - Calendar month navigation signals ---
@@ -145,6 +165,16 @@ class MyWindow(QWidget):
         row_h_mon.addWidget(self.main_label, 1)  
         row_h_mon.addLayout(row_h_month_control) 
         row_h_mon.setAlignment(row_h_month_control, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+
+        # --- Widgets for Horizontal Layout 2 (Custom Diary Property) ---
+
+        self.bt_custom_property = QPushButton("Customize \nProperty")
+        self.bt_custom_property.setFixedSize(80, 40)
+        self.bt_custom_property.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+        row_h_custom_property = QHBoxLayout()
+        row_h_custom_property.addWidget(self.bt_custom_property)
+        row_h_custom_property.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
 
         # --- Calendar Month ---
         # Generate directly with main_vertical_layout 
@@ -204,11 +234,11 @@ class MyWindow(QWidget):
         # Allow Calendar Month view to be scrollable
         view_scroll_calendar_month = QWidget()
         view_scroll_calendar_month.setLayout(view_content_calendar_month)
-        self.grid_scroll_area = QScrollArea()
-        self.grid_scroll_area.setWidgetResizable(True)
-        self.grid_scroll_area.setWidget(view_scroll_calendar_month)
-        self.grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self.grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        grid_scroll_area = QScrollArea()
+        grid_scroll_area.setWidgetResizable(True)
+        grid_scroll_area.setWidget(view_scroll_calendar_month)
+        grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
         # --- Main Window View ---
         main_window = QWidget()
@@ -216,8 +246,9 @@ class MyWindow(QWidget):
         main_window_view.setContentsMargins(14, 14, 14, 36) # left, top, right, bottom
         main_window_view.addWidget(self.bt_setting, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         main_window_view.addLayout(row_h_mon) 
+        main_window_view.addLayout(row_h_custom_property)
         main_window_view.addSpacing(5)
-        main_window_view.addWidget(self.grid_scroll_area, 1)
+        main_window_view.addWidget(grid_scroll_area, 1)
         
         # self.setLayout(main_window_view)
         return main_window
@@ -238,6 +269,14 @@ class MyWindow(QWidget):
         self._update_ui_theme()
         self.stacked_widget.setCurrentIndex(self.settings_page_index)
         self.setWindowTitle("Application Settings")
+
+    def _show_custom_property_page(self):
+        """Switches the QStackedWidget to display the custom property page."""
+        # Tell custom property page to load fresh data from config before showing it
+        self.custom_property_page_widget.load_into_ui()
+        # self._update_ui_theme()
+        self.stacked_widget.setCurrentIndex(self.custom_diary_property_index)
+        self.setWindowTitle("Custom Property Settings")
 
     # --- Methods to react to settings changes ---
     def _handle_settings_saved_from_settings_page(self):
@@ -281,10 +320,11 @@ class MyWindow(QWidget):
         )
 
         # Update main page header label 
-        self.main_label.setStyleSheet(MAIN_HEADER_DARK_QSS if current_theme == 'dark' else MAIN_HEADER_LIGHT_QSS) 
- 
-        # Tell the settings page widget to update its theme-dependent styles
+        self.main_label.setStyleSheet(MAIN_LABEL_DARK_QSS if current_theme == 'dark' else MAIN_LABEL_LIGHT_QSS) 
         self.settings_page_widget.update_theme_style(current_theme)
+        self.custom_property_page_widget.update_theme_style(current_theme)
+
+        
 
     def _update_calendar_cells(self, mode="None"):
         """

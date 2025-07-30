@@ -2,7 +2,7 @@ import sys
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QMenu, QLineEdit
 )
-from PyQt6.QtGui import QAction # QAction is usually imported from QtGui
+from PyQt6.QtGui import QAction  
 
 class DropdownButtonExample(QWidget):
     def __init__(self):

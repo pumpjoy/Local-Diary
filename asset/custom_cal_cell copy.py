@@ -8,8 +8,6 @@ from PyQt6.QtCore import Qt, QPoint
   
 
 
-
-
 class CalendarCellWidget(QWidget):
     def __init__(self, text="", is_today=False, *args, **kwargs):
         super().__init__(*args, **kwargs)  

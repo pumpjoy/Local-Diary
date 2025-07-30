@@ -1,8 +1,8 @@
 # css_cheatsheet.py
 
-# --- Global Constants ---
-GLOBAL_DARK_BACKGROUND = 1
+# --- Global Constants --- 
 GLOBAL_CAL_CELL_FONT_SIZE = 14
+GLOBAL_CAL_HEAD_MARGIN = 4
 
 
 # --- Global Application Stylesheets ---

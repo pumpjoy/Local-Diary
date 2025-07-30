@@ -1,48 +1,57 @@
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout
+from PyQt6.QtWidgets import (
+    QSizePolicy,
+    QVBoxLayout, QHBoxLayout,
+     QWidget, QLabel, 
+)
 from PyQt6.QtGui import QPainter, QPen, QColor, QFontMetrics
 from PyQt6.QtCore import Qt, QPoint
 
-class CalendarCellDateLabel(QLabel):
-    """
-    Displays a date label in a calendar cell.
-    Shows a number and highlight today's date with a circle.
-    """
+from asset.css_cheatsheet import(
+    GLOBAL_CAL_HEAD_MARGIN,
+)
+
+class CalendarCellWidget(QWidget):
     def __init__(self, text="", is_today=False, *args, **kwargs):
-        super().__init__("", *args, **kwargs)  # Don't pass text to QLabel
-        self.display_text = text
+        super().__init__(*args, **kwargs)  
+        
+        self.date_label_margin = 8
+
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.main_layout = QVBoxLayout(self) 
+        self.main_layout.setContentsMargins(0, 0, 0, 0) 
+
+        # Create a QHBoxLayout
         self.is_today = is_today
-        self.margin = 8  # Margin from top-left
+        self.date_label = QLabel(text=text) 
+        self.date_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+        self.date_label.setMargin(4)  # Set date_label_margin for the label   
 
-    def set_today(self, is_today):
-        self.is_today = is_today 
+        self.main_layout.addWidget(self.date_label)
+        self.main_layout.stretch(1)
 
-    def setText(self, text):
-        self.display_text = text 
+    def cus_set_text(self, text):
+        self.date_label.setText(text)
 
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        font = self.font()
-        metrics = QFontMetrics(font)
-        x = self.margin
-        y = self.margin + metrics.ascent()
+    def set_today(self, is_today): 
+        self.is_today = is_today
 
-        # Draw the number
-        painter.setPen(QColor(self.palette().color(self.foregroundRole())))
-        painter.drawText(x, y, self.display_text)
+    def today_style(self, style):
+        self.date_label.setStyleSheet(style)
 
-        # If today, draw a circle around the number
-        if self.is_today:
-            # Get bounding rect for the text
-            text_rect = metrics.boundingRect(self.display_text)
-            # Adjust position to where text is drawn
-            text_rect.moveTopLeft(QPoint(x, self.margin))
-            # Calculate center of the bounding rect
-            center_x = text_rect.left() + text_rect.width() // 2 + 1
-            center_y = text_rect.top() + text_rect.height() // 2 + 1
-            # Circle radius with padding
-            radius = max(text_rect.width(), text_rect.height()) // 2 + 6
-            pen = QPen(QColor("red"), 2)
-            painter.setPen(pen)
-            painter.drawEllipse(QPoint(center_x, center_y), radius, radius)
+class CalendarHeaderWidget(QWidget):
+    # TODO: Stays a widget until further actions
+    # Should be a label
+    def __init__(self, text="", *args, **kwargs):
+        super().__init__(*args, **kwargs) 
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.main_layout = QVBoxLayout(self) 
+        self.main_layout.setContentsMargins(0, 0, 0, 0) 
+        self.day_label = QLabel(text=text) 
+        self.day_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
+        self.day_label.setMargin(GLOBAL_CAL_HEAD_MARGIN)
+        self.main_layout.addWidget(self.day_label)
+        self.main_layout.stretch(1)
+    
+    def cus_set_text(self, text):
+        self.day_label.setText(text)

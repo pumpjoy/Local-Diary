@@ -24,9 +24,10 @@ from asset.css_cheatsheet import (
     GLOBAL_DARK_QSS, GLOBAL_LIGHT_QSS,
     MAIN_HEADER_DARK_QSS, MAIN_HEADER_LIGHT_QSS, 
     MAIN_CALENDAR_DAY_CELL_LIGHT, MAIN_CALENDAR_DAY_CELL_DARK,
-    MAIN_CALENDAR_DATE_NOT_THIS_MONTH_LIGHT, MAIN_CALENDAR_DATE_NOT_THIS_MONTH_DARK
+    MAIN_CALENDAR_TODAY_CELL_LIGHT, MAIN_CALENDAR_TODAY_CELL_DARK,
+    MAIN_CALENDAR_DATE_NOT_THIS_MONTH_LIGHT, MAIN_CALENDAR_DATE_NOT_THIS_MONTH_DARK,
 )
-from asset.custom_cal_cell import CalendarCellDateLabel
+from asset.custom_cal_cell2 import CalendarCellWidget
 
 class MyWindow(QWidget):
     def __init__(self):
@@ -55,8 +56,8 @@ class MyWindow(QWidget):
         # --- Calendar month settings ---
         self.cal_month_num_rows = 6
         self.cal_month_num_cols = 7 
-        self.cal_month_day_height = 30 
-        self.cal_month_date_height = 300 
+        self.cal_month_day_height = 28 
+        self.cal_month_date_min_height = 100
 
         self.first_day_is_monday = False
 
@@ -163,7 +164,6 @@ class MyWindow(QWidget):
             layout_h_dates.setContentsMargins(0, 0, 0, 0)
             layout_h_dates.setSpacing(0)
 
-            current_row_fixed_height = self.cal_month_day_height if row == 0 else self.cal_month_date_height
 
             # Generate for columns 
             if self.first_day_is_monday:
@@ -178,10 +178,10 @@ class MyWindow(QWidget):
             for col in range(self.cal_month_num_cols):
                 if row == 0:
                     # Day header cells
-                    cell_widget = CalendarCellDateLabel(f"{days[col]}") 
+                    cell_widget = CalendarCellWidget(f"{days[col]}") 
                 else:  
                     # Date cells
-                    cell_widget = CalendarCellDateLabel(f"{this_month[(row - 1) * self.cal_month_num_cols + col].day}") 
+                    cell_widget = CalendarCellWidget(f"{this_month[(row - 1) * self.cal_month_num_cols + col].day}") 
                 
                 self.calendar_widgets_reference[(row, col)] = cell_widget  # Store reference for later use
 
@@ -190,15 +190,13 @@ class MyWindow(QWidget):
                 )
                 cell_widget.setStyleSheet(combined_style)
 
-                # Conditionally set fixed height
-                if current_row_fixed_height > 0:
-                    cell_widget.setFixedHeight(current_row_fixed_height)
+                if row == 0: 
+                    cell_widget.setFixedHeight(self.cal_month_day_height)
                 else:
-                    # If no fixed height, let it expand vertically if needed
-                    cell_widget.setSizePolicy(
-                        QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding
-                    )
-
+                    cell_widget.setMinimumHeight(self.cal_month_date_min_height)
+                    cell_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
+                
+                
                 layout_h_dates.addWidget(cell_widget, 1)
 
             view_content_calendar_month.addLayout(layout_h_dates)
@@ -320,8 +318,8 @@ class MyWindow(QWidget):
 
         for col in range(self.cal_month_num_cols):
             cell_widget = self.calendar_widgets_reference.get((0, col))
-            if cell_widget:
-                cell_widget.setText(days[col])
+            if cell_widget: 
+                cell_widget.cus_set_text(days[col])
 
         # Update date cells (rows 1+)
         for row in range(1, self.cal_month_num_rows):
@@ -330,23 +328,22 @@ class MyWindow(QWidget):
                 idx = (row - 1) * self.cal_month_num_cols + col
                 if cell_widget and idx < len(this_month):
                     cell_date = this_month[idx] 
-                    cell_widget.setText(str(cell_date.day))
-                    current_theme = self.app_config.get_setting('appearance.theme', 'dark')
-                    combined_style = (
-                        (MAIN_CALENDAR_DAY_CELL_LIGHT if current_theme == 'light' else MAIN_CALENDAR_DAY_CELL_DARK) 
-                    )
-                    cell_widget.setStyleSheet(combined_style)
+                    
+                    current_theme = self.app_config.get_setting('appearance.theme', 'dark') 
+                    style = MAIN_CALENDAR_DAY_CELL_LIGHT if current_theme == 'light' else MAIN_CALENDAR_DAY_CELL_DARK      
+
+                    cell_widget.cus_set_text(str(cell_date.day))
+                    cell_widget.setStyleSheet(style)
 
                     # Check if this cell is within the current month
                     if cell_date.month != this_date.month: 
-                        cell_widget.setStyleSheet(MAIN_CALENDAR_DATE_NOT_THIS_MONTH_LIGHT \
-                                                  if current_theme == "light" else MAIN_CALENDAR_DATE_NOT_THIS_MONTH_DARK) 
-
-                    # Check if this cell is today
-                    # If it is, highlight it
+                        cell_widget.setStyleSheet(MAIN_CALENDAR_DATE_NOT_THIS_MONTH_LIGHT if current_theme == "light" else MAIN_CALENDAR_DATE_NOT_THIS_MONTH_DARK) 
+                    
+                    # Check if this cell is today, highlight if yes
                     if cell_date == today: 
                         if hasattr(cell_widget, "set_today"):
-                            cell_widget.set_today(True)
+                            cell_widget.set_today(True)   
+                            cell_widget.setStyleSheet(MAIN_CALENDAR_TODAY_CELL_LIGHT if current_theme == "light" else MAIN_CALENDAR_TODAY_CELL_DARK )
                     else:
                         if hasattr(cell_widget, "set_today"):
                             cell_widget.set_today(False)

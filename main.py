@@ -3,7 +3,7 @@ import json
 
 from PyQt6.QtWidgets import QApplication
 
-from view_main import MyWindow
+from temp_archive.view_main import MyWindow
 
 
  

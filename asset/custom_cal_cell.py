@@ -1,8 +1,12 @@
-from PyQt6.QtWidgets import QLabel
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout
 from PyQt6.QtGui import QPainter, QPen, QColor, QFontMetrics
 from PyQt6.QtCore import Qt, QPoint
 
-class CalendarCellWidget(QLabel):
+class CalendarCellDateLabel(QLabel):
+    """
+    Displays a date label in a calendar cell.
+    Shows a number and highlight today's date with a circle.
+    """
     def __init__(self, text="", is_today=False, *args, **kwargs):
         super().__init__("", *args, **kwargs)  # Don't pass text to QLabel
         self.display_text = text

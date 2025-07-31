@@ -11,6 +11,9 @@ class DiaryPropertyConfiguration:
         Initializes the configuration manager.
         Sets up the path to the config file and loads existing settings or defaults.
         """
+        self.organization_name = organization_name
+        self.application_name = application_name
+
         self.config_dir = self._get_config_directory()
         self.config_file_path = os.path.join(self.config_dir, "diary_property.json")
         self.config_data = {}
@@ -77,9 +80,11 @@ class DiaryPropertyConfiguration:
             with open(self.config_file_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config_data, f, indent=4) # Use indent for human-readability
             print(f"Configuration saved to: {self.config_file_path}")
+            return True # Success
         except Exception as e:
             # Handle potential file I/O errors during saving
             print(f"Error saving config file: {e}")
+            return False # Failed
 
     def get_setting(self, key, default_value=None):
         """
@@ -119,5 +124,6 @@ class DiaryPropertyConfiguration:
         return {
             "title": "Title",
             "date": "",
-            "description": "descriptions"
+            "description": "Default descriptions for the diary entries.",
+            "dynamic_rows": [] # List of dynamic rows for diary entries
         }

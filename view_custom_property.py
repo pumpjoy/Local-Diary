@@ -8,11 +8,11 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout, QHBoxLayout, QGridLayout,
-    QWidget, QToolButton, QLabel, QLineEdit, QPushButton, 
+    QWidget, QToolButton, QLabel, QLineEdit, QPushButton, QDateEdit, 
     QScrollArea, QMenu, QMessageBox,
 )
 from PyQt6.QtGui import QAction
-from PyQt6.QtCore import Qt 
+from PyQt6.QtCore import Qt, QDate
 
 from asset.css_cheatsheet import (
     MAIN_LABEL_LIGHT_QSS, MAIN_LABEL_DARK_QSS,  
@@ -31,7 +31,7 @@ class CustomRowWidget(QWidget):
     move_down_requested = pyqtSignal(int)  # Signal: emitted when 'Down' button is clicked (passes row_id)
     delete_requested = pyqtSignal(int)    # Signal: emitted when 'Delete' button is clicked (passes row_id)
 
-    def __init__(self, row_id: int, text_content: str, parent=None):
+    def __init__(self, row_id: int, text_content: str, line_edit_value: str = "", parent=None):
         super().__init__(parent)
         self.row_id = row_id # Unique identifier for this specific row widget
         self.text_content = text_content
@@ -58,6 +58,7 @@ class CustomRowWidget(QWidget):
 
         # Create Line Edit
         self.line_edit = QLineEdit(f"Data for {row_id}")
+        self.line_edit.setText(line_edit_value)  
 
         # Create Delete Button
         self.delete_button = QPushButton("🗑️")
@@ -84,7 +85,7 @@ class CustomPropertyWidget(QWidget):
         self.diary_manager = diary_manager # Store reference to diary manager
         self._setup_ui()
         self._connect_signals()
-        self.load_into_ui() 
+        self._load_initial_rows_from_config() 
 
     def _setup_ui(self):
 
@@ -100,12 +101,15 @@ class CustomPropertyWidget(QWidget):
         self.title_label = QLabel("Title") # TODO: Add StyleSheet 
         self.title_edit = QLineEdit()
         self.date_label = QLabel("Date") 
-        self.date_edit = QLineEdit() # TODO: Change to date editor
+        self.date_edit = QDateEdit()
+        self.date_edit.setDate(QDate.currentDate()) 
+        self.date_edit.setDisplayFormat("dd/MM/yyyy")
+        self.date_edit.setCalendarPopup(True)
+        self.date_edit.setEnabled(False) # During Template View, Not editable  
 
         self.title_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.date_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         
-
         # --- Dynamic Button - Drop Down menu --- 
         self.content_grid = QGridLayout(self)
         self.content_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -123,13 +127,9 @@ class CustomPropertyWidget(QWidget):
         self.add_new_button_widget = None
         self.add_new_row_button()
 
-        self.add_row("Test 0")
-        self.add_row("Test 1")
-        self.add_row("Test 2")
         # After initial setup, update state of Up/Down buttons
         self.update_button_states()
 
-        
         # Make Content Grid scrollable
         view_scroll_widget = QWidget()
         view_scroll_widget.setLayout(self.content_grid)
@@ -164,19 +164,109 @@ class CustomPropertyWidget(QWidget):
         page_mainv_layout.addWidget(grid_scroll_area, 1)
         page_mainv_layout.stretch(1)
 
+    
+    def load_into_ui(self):
+        """
+        Loads current diary property settings into the UI widgets.
+        This is called when the widget is displayed.
+        """
+        self.title_edit.setText(self.diary_manager.get_setting('title', ''))
+        self.date_edit.setDate(QDate.fromString(self.diary_manager.get_setting('date', ''), "dd/MM/yyyy"))
+
+
     def _connect_signals(self):
         self.back_button.clicked.connect(self._on_back_button_clicked)  
 
     def _on_back_button_clicked(self):
-        self._save_settings_from_ui()
+        self._save_template()
         self.back_to_main_requested.emit()
+    
+    # --- Load and Save Template Logics ---
+    def _save_template(self):
+        """
+        Gathers data from all dynamic rows and saves it as the JSON template
+        using the ConfigManager.
+        """
+        data_to_save = []
+        ordered_ids = self._get_current_order()
 
-    def load_into_ui(self):
-        # current_theme = self.config_manager.get_setting('appearance.theme', 'dark') 
-        pass
+        for row_id in ordered_ids:
+            widget = self.dict_row_widgets.get(row_id)
+            if widget:
+                row_data = {
+                    "text_button_content": widget.text_button.text(),
+                    "line_edit_value": widget.line_edit.text()
+                }
+                data_to_save.append(row_data)
+        
+        self.diary_manager.set_setting('dynamic_rows', data_to_save)
 
-    def _save_settings_from_ui(self):
-        pass
+        try:
+            self.diary_manager.save_config()
+            print(f"Template saved successfully to {self.diary_manager.config_file_path}")
+        except Exception as e:
+            print(f"Error saving template: {e}")
+            print(f"Failed to save template to {self.diary_manager.config_file_path}")  
+
+    def _load_initial_rows_from_config(self):
+        """
+        Loads the dynamic row data (the template) from the config manager
+        and populates the grid. Called once on application startup.
+        """
+        loaded_template_data = self.diary_manager.get_setting('dynamic_rows', [])
+        
+        self._clear_all_rows()
+        
+        self.next_row_id = 0 
+
+        if loaded_template_data:
+            print(f"Loading {len(loaded_template_data)} dynamic rows (template) from config.")
+            for row_data in loaded_template_data:
+                text_content = row_data.get("text_button_content", "Loaded Item")
+                line_edit_value = row_data.get("line_edit_value", "")
+                self.add_row(text_content, line_edit_value)
+        else:
+            print("No dynamic rows (template) found in config. Starting with an empty template.")
+            self._rebuild_layout_from_order([])
+
+        self.update_button_states()
+
+    def _clear_all_rows(self):
+        """Helper to clear all DraggableRowWidgets from the grid."""
+        current_order_ids = self._get_current_order()
+        for row_id in current_order_ids:
+            widget = self.dict_row_widgets.pop(row_id, None)
+            if widget:
+                widget.deleteLater()
+
+    def _rebuild_layout_from_order(self, new_order_ids: list[int]):
+        """
+        Clears entire QGridLayout and then re-adds all widgets
+        (custom rows and 'Add New' button) in specified new order.
+        This ensures visual layout matches logical order.
+        """ 
+        while self.content_grid.count():
+            item = self.content_grid.takeAt(0)
+            if item:
+                widget = item.widget()
+                if widget:
+                    widget.setParent(None) # Disown widget from layout
+
+        # Re-add CustomRowWidget instances based on new_order_ids list.
+        current_grid_row = 0
+        for row_id in new_order_ids:
+            if row_id in self.dict_row_widgets:
+                widget = self.dict_row_widgets[row_id]
+                # Add custom row, spanning all available columns
+                self.content_grid.addWidget(widget, current_grid_row, 0, 1, self.content_grid.columnCount())
+                current_grid_row += 1
+        
+        # Re-add "Add New" button at the very last row.
+        if self.add_new_button_widget:
+            self.content_grid.addWidget(self.add_new_button_widget, current_grid_row, 0, 1, self.content_grid.columnCount())
+        
+        # Request layout to update itself to reflect changes
+        self.content_grid.update()
 
     def update_theme_style(self, theme_name):
         """
@@ -209,17 +299,17 @@ class CustomPropertyWidget(QWidget):
         self.add_new_button_widget = button 
         self._rebuild_layout_from_order(self._get_current_order())
 
-    def add_row(self, text_content: str):
+    def add_row(self, text_content: str, line_edit_value: str = ""):
         """
         Creates a new CustomRowWidget and adds it to grid.
-     new row is always added just above 'Add New' button.
+        new row is always added just above 'Add New' button.
         """
         # Generate a unique ID for new row
         row_id = self.current_row_id
         self.current_row_id += 1
 
         # Create CustomRowWidget instance
-        custom_row_widget = CustomRowWidget(row_id, text_content, self)
+        custom_row_widget = CustomRowWidget(row_id, text_content, line_edit_value, self)
         # Store widget in dictionary for easy lookup by ID
         self.dict_row_widgets[row_id] = custom_row_widget
         
@@ -251,7 +341,6 @@ class CustomPropertyWidget(QWidget):
                     order.append(widget.row_id)
         return order
 
-
     def move_row_up(self, row_id_to_move: int):
         """
         Moves CustomRowWidget with given row_id up one position in grid.
@@ -272,7 +361,6 @@ class CustomPropertyWidget(QWidget):
             print(f"Error: Row with ID {row_id_to_move} not found in current order.")
         
         self.update_button_states() # Update button states after move
-
 
     def move_row_down(self, row_id_to_move: int):
         """
@@ -329,35 +417,7 @@ class CustomPropertyWidget(QWidget):
         else:
             print(f"Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
 
-    def _rebuild_layout_from_order(self, new_order_ids: list[int]):
-        """
-        Clears entire QGridLayout and then re-adds all widgets
-        (custom rows and 'Add New' button) in specified new order.
-        This ensures visual layout matches logical order.
-        """ 
-        while self.content_grid.count():
-            item = self.content_grid.takeAt(0)
-            if item:
-                widget = item.widget()
-                if widget:
-                    widget.setParent(None) # Disown widget from layout
-
-        # Re-add CustomRowWidget instances based on new_order_ids list.
-        current_grid_row = 0
-        for row_id in new_order_ids:
-            if row_id in self.dict_row_widgets:
-                widget = self.dict_row_widgets[row_id]
-                # Add custom row, spanning all available columns
-                self.content_grid.addWidget(widget, current_grid_row, 0, 1, self.content_grid.columnCount())
-                current_grid_row += 1
-        
-        # Re-add "Add New" button at the very last row.
-        if self.add_new_button_widget:
-            self.content_grid.addWidget(self.add_new_button_widget, current_grid_row, 0, 1, self.content_grid.columnCount())
-        
-        # Request layout to update itself to reflect changes
-        self.content_grid.update()
-
+    
 
     def update_button_states(self):
         """

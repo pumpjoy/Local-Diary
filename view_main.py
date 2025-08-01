@@ -274,7 +274,7 @@ class MyWindow(QWidget):
     def _show_custom_property_page(self):
         """Switches the QStackedWidget to display the custom property page."""
         # Tell custom property page to load fresh data from config before showing it
-        self.custom_property_page_widget.load_into_ui()
+        self.custom_property_page_widget.load_into_ui
         self.stacked_widget.setCurrentIndex(self.custom_diary_property_index)
         self.setWindowTitle("Custom Property Settings")
 

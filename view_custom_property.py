@@ -42,12 +42,12 @@ class CustomRowWidget(QWidget):
         self.layout.setSpacing(5)  
 
         # Create 'Up' button
-        self.up_button = QPushButton("▲") 
+        self.up_button = QPushButton("▲") # Placeholder for button
         self.up_button.setFixedSize(30, 25) 
         self.up_button.clicked.connect(lambda: self.move_up_requested.emit(self.row_id))
 
         # Create 'Down' button
-        self.down_button = QPushButton("▼") 
+        self.down_button = QPushButton("▼") # Placeholder for button
         self.down_button.setFixedSize(30, 25)   
         self.down_button.clicked.connect(lambda: self.move_down_requested.emit(self.row_id))
 
@@ -61,7 +61,7 @@ class CustomRowWidget(QWidget):
         self.line_edit.setText(line_edit_value)  
 
         # Create Delete Button
-        self.delete_button = QPushButton("🗑️")
+        self.delete_button = QPushButton("🗑️") # Placeholder for button
         self.delete_button.setFixedSize(30, 25)   
         self.delete_button.clicked.connect(lambda: self.delete_requested.emit(self.row_id))
 

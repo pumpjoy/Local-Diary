@@ -1,10 +1,9 @@
 from PyQt6.QtWidgets import (
     QSizePolicy,
-    QVBoxLayout, QHBoxLayout,
-     QWidget, QLabel, 
-)
-from PyQt6.QtGui import QPainter, QPen, QColor, QFontMetrics
-from PyQt6.QtCore import Qt, QPoint
+    QGroupBox, QVBoxLayout, QHBoxLayout,
+    QWidget, QLabel, QPushButton,
+) 
+from PyQt6.QtCore import Qt 
 
 from asset.css_cheatsheet import(
     GLOBAL_CAL_HEAD_MARGIN,
@@ -14,21 +13,46 @@ class CalendarCellWidget(QWidget):
     def __init__(self, text="", is_today=False, *args, **kwargs):
         super().__init__(*args, **kwargs)  
         
-        self.date_label_margin = 8
+        self.is_today = is_today
+        self.date_label_margin = 4
+        self.bt_add_new_entry_margin = 4
 
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        
+        self.parent_layout = QVBoxLayout(self)
+        self.parent_layout.setContentsMargins(0, 0, 0, 0)
+        self.parent_layout.setSpacing(0)
+        self.main_layout = QGroupBox(self) 
+        self.parent_layout.addWidget(self.main_layout)
 
-        self.main_layout = QVBoxLayout(self) 
-        self.main_layout.setContentsMargins(0, 0, 0, 0) 
+        self.content_layout = QVBoxLayout(self.main_layout)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setSpacing(0)
 
         # Date number header
-        self.is_today = is_today
+        # Horizontal layout for bt_add_new_entry + date_label
+        header_h_layout = QHBoxLayout()
+        header_h_layout.setContentsMargins(0, 0, 0, 0) 
+        header_h_layout.setSpacing(0) 
+        
+        self.bt_add_new_entry = QPushButton('+') # Placeholder for button  
+        self.bt_add_new_entry.setToolTip("Add new entry")
+        self.bt_add_new_entry.setCursor(Qt.CursorShape.CrossCursor)
+        self.bt_add_new_entry.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.bt_add_new_entry.setStyleSheet(f"margin: {self.bt_add_new_entry_margin}px;")
+        self.bt_add_new_entry.setFixedSize(30, 30) 
+        
         self.date_label = QLabel(text=text) 
-        self.date_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
-        self.date_label.setMargin(4)  # Set date_label_margin for the label   
+        self.date_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)   
+        self.date_label.setStyleSheet(f"border: 1px solid transparent; background: transparent; margin: {self.date_label_margin}px;")
 
-        self.main_layout.addWidget(self.date_label)
-        self.main_layout.stretch(1)
+        header_h_layout.addWidget(self.bt_add_new_entry)
+        header_h_layout.addStretch(1)
+        header_h_layout.addWidget(self.date_label) 
+        
+        self.content_layout.addLayout(header_h_layout) 
+        self.content_layout.addStretch(1)
+ 
 
         # --- Actual content --- 
         # Get from json
@@ -44,7 +68,7 @@ class CalendarCellWidget(QWidget):
         self.date_label.setStyleSheet(style)
 
 class CalendarHeaderWidget(QWidget):
-    # TODO: Stays a widget until further actions
+    # FUTURE: Stays a widget until further actions
     # Should be a label
     def __init__(self, text="", *args, **kwargs):
         super().__init__(*args, **kwargs) 

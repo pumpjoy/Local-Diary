@@ -18,11 +18,8 @@ from asset.custom_row_widget import CustomRowWidget
 
 from asset.css_cheatsheet import (
     MAIN_LABEL_LIGHT_QSS, MAIN_LABEL_DARK_QSS,  
-)
-
-TYPES_OF_PROPERTIES = [
-    "text", "number", "select", "multi_select", "checkbox"
-    ]
+    TYPES_OF_PROPERTIES 
+) 
 
 
 # --- Custom Property Widget ---
@@ -402,7 +399,6 @@ class CustomPropertyWidget(QWidget):
         else:
             print(f"Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
 
-    
 
     def update_button_states(self):
         """

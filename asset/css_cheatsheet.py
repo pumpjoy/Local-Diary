@@ -1,5 +1,10 @@
 # css_cheatsheet.py
 
+# Borrowing this place to put types_of_properties 
+TYPES_OF_PROPERTIES = [
+    "text", "number", "select", "multi_select", "checkbox"
+    ]
+
 # --- Global Constants --- 
 GLOBAL_CAL_CELL_FONT_SIZE = 14
 GLOBAL_CAL_HEAD_MARGIN = 4

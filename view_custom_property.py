@@ -17,10 +17,10 @@ from PyQt6.QtCore import Qt, QDate
 from asset.custom_row_widget import CustomRowWidget
 
 from asset.css_cheatsheet import (
-    MAIN_LABEL_LIGHT_QSS, MAIN_LABEL_DARK_QSS,  
+    MAIN_LABEL_LIGHT_QSS, MAIN_LABEL_DARK_QSS,
+    
     TYPES_OF_PROPERTIES 
-) 
-
+)
 
 # --- Custom Property Widget ---
 class CustomPropertyWidget(QWidget):
@@ -171,7 +171,7 @@ class CustomPropertyWidget(QWidget):
             if widget:
                 row_data = {
                     "property_key": widget.property_key.text(),
-                    "property_type": 0, # Placeholder for property type (0 for text, 1 for number)
+                    "property_type": widget.property_type,
                     "property_value": widget.property_value.text()
                 }
                 data_to_save.append(row_data)
@@ -200,8 +200,9 @@ class CustomPropertyWidget(QWidget):
             print(f"Loading {len(loaded_template_data)} dynamic rows (template) from config.")
             for row_data in loaded_template_data:
                 property_key = row_data.get(f"property_key", "Loaded Item")
-                property_value = row_data.get("property_value", "")
-                self.add_row(property_key, property_value)
+                property_type = row_data.get("property_type", "text")
+                property_value = row_data.get("property_value", "No Data Loaded")
+                self.add_row(property_key, property_type, property_value)
         else:
             print("No dynamic rows (template) found in config. Starting with an empty template.")
             self._rebuild_layout_from_order([])
@@ -256,24 +257,35 @@ class CustomPropertyWidget(QWidget):
             self.main_label.setStyleSheet(MAIN_LABEL_DARK_QSS) 
 
     # --- Dynamic action logic --- 
+    
+    def add_edit(self, typeis="text"): 
+        """
+        @param typeis: Type of property to add.
+        - text, number, select, multi_select, checkbox
+        """
+        print(f"Custom Property: Add {typeis} pressed")  
+        self.add_row(property_key=f"{typeis.capitalize().replace('_', ' ')} {self.current_row_id}", 
+                     property_type=typeis, 
+                     property_value=f"{typeis.capitalize().replace('_', ' ')} for {self.current_row_id}") 
+        
     def add_new_row_button(self): 
         button = QToolButton()
         button.setText(f"Add New Property")
         button.setMinimumSize(100, 25)
         button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup) # Shows a separate arrow for menu
-        
+
         options_menu = QMenu(self) 
 
-        for property_type in TYPES_OF_PROPERTIES:
-            property_type = property_type.capitalize().replace('_', ' ')
-            options_text = QAction(property_type, self)
+        for property_type in TYPES_OF_PROPERTIES: 
+            property_text = property_type.capitalize().replace('_', ' ')
+            options_text = QAction(property_text, self)
             # NOTE: This lambda uses closure to capture current property_type, 
             # Without it, all actions would use the last property_type in the loop.
             # This is because without closure, lambda captures the variable, not its value.
             # i.e. reference to property_type, 
             # not its value at the time of creation. (Hence final value of TYPES_OF_PROPERTIES)
-            options_text.triggered.connect(lambda checked, t=property_type: self.add_edit(type=t)) 
-            options_menu.addAction(options_text) 
+            options_text.triggered.connect(lambda checked, t=property_type: self.add_edit(typeis=t)) 
+            options_menu.addAction(options_text)  
 
         button.setMenu(options_menu)
 
@@ -298,6 +310,8 @@ class CustomPropertyWidget(QWidget):
         custom_row_widget.move_up_requested.connect(self.move_row_up)
         custom_row_widget.move_down_requested.connect(self.move_row_down) 
         custom_row_widget.delete_requested.connect(self.delete_row) 
+        custom_row_widget.value_changed_requested.connect(self.value_changed) 
+
 
         # Rebuild entire layout to incorporate new row in its correct position
         self._rebuild_layout_from_order(self._get_current_order() + [row_id])
@@ -336,7 +350,8 @@ class CustomPropertyWidget(QWidget):
                 
                 # Rebuild layout based on updated order
                 self._rebuild_layout_from_order(current_order_ids)
-
+                
+            self._save_template()
         except ValueError:
             # This should ideally not happen if row_id_to_move is valid
             print(f"Error: Row with ID {row_id_to_move} not found in current order.")
@@ -357,7 +372,7 @@ class CustomPropertyWidget(QWidget):
                 
                 # Rebuild layout based on updated order
                 self._rebuild_layout_from_order(current_order_ids)
-
+            self._save_template()
         except ValueError: 
             print(f"Error: Row with ID {row_id_to_move} not found in current order.")
             
@@ -396,8 +411,45 @@ class CustomPropertyWidget(QWidget):
             widget_to_delete.deleteLater()
             self._rebuild_layout_from_order(current_order_ids)
             self.update_button_states() # Update button states for remaining rows
+            self._save_template()
         else:
             print(f"Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
+
+    def value_changed(self, row_id: int, new_key: str, new_type: str, new_value: str):
+        """
+        Handles value change requests from CustomRowWidget.
+        Updates the corresponding property value in the config manager.
+        """
+        widget = self.dict_row_widgets.get(row_id)
+        if widget:
+            # Update the property value in the config manager
+            widget.property_value.setText("") # Removes everything in the property value
+            # Warning is handled by CustomRowWidget itself
+            # TODO: Duplicate this row with its content
+            # duplicate_row(row_id, new_key, new_type, new_value)
+            self.diary_manager.set_setting(f'dynamic_rows.{row_id}.property_type', new_type)
+            self._save_template() 
+        else:
+            print(f"Error: Row with ID {row_id} not found for value update.")
+        
+        self.update_button_states()
+
+    def duplicate_row_with_content(self, row_id: int, new_key: str, new_type: str, new_value: str):
+        """
+        Duplicates a row with its content.
+        Creates a new CustomRowWidget with the same properties as the original.
+        """ 
+
+    def duplicate_row(self, row_id: int, new_key: str, new_type: str, new_value: str):
+        """
+        Duplicates a row without content.
+        Creates a new CustomRowWidget with the same properties as the original.
+        """
+        print(f"Duplicating row {row_id} with key '{new_key}' and type '{new_type}'")
+        self.add_row(property_key=new_key, property_type=new_type, property_value=new_value)
+        
+        # Update the newly created row's ID to be unique
+        new_row_id = self.current_row_id - 1
 
 
     def update_button_states(self):
@@ -414,14 +466,3 @@ class CustomPropertyWidget(QWidget):
             widget.up_button.setEnabled(i > 0) 
             # Enable 'Down' button if it's not last custom row
             widget.down_button.setEnabled(i < num_custom_rows - 1)
-
-    # --- Fun properties ---
-    def add_edit(self, type="text"): 
-        """
-        @param type: Type of property to add.
-        - text, number, select, multi_select, checkbox
-        """
-        print("Custom Property: Add 'text' pressed") 
-        self.add_row(property_key=f"{type.capitalize().replace('_', ' ')} {self.current_row_id}", 
-                     property_type=type, 
-                     property_value=f"{type.capitalize().replace('_', ' ')} for {self.current_row_id}") 

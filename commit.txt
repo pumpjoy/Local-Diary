@@ -1,0 +1,4 @@
+1. CustomRowWidget and CustomPropertyWidget
+ - Remove menu1 and menu2
+ - stacked view for each type of widget 
+ - WORKED. THE CHANGE WIDGET WORKED /-\

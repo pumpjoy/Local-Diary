@@ -137,7 +137,7 @@ class MyWindow(QWidget):
         
         # --- Widgets for Horizontal Layout 1 (Header Month) ---
         this_date = self.app_config.get_setting('current_month', datetime.datetime.now())
-        this_date = datetime.datetime.fromisoformat(this_date)  
+        this_date = datetime.datetime.fromisoformat(this_date)
         self.main_label = QLabel(this_date.strftime('%B %Y'))
         
         self.main_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)

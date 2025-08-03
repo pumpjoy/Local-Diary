@@ -74,14 +74,31 @@ class CustomPropertyWidget(QWidget):
         self.date_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         
         # --- Custom Grid Row Content --- 
-        self.content_grid = QGridLayout(self)
-        self.content_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.content_grid.setContentsMargins(10, 10, 10, 10)
-        self.content_grid.setSpacing(10)
-
         # Dictionary to store CustomRowWidget instances, mapped by unique row_id
         self.dict_row_widgets = {}
         self.current_row_id = 0 # Counter for generating unique row_ids # Follows row position
+        
+        grid_scroll_area = QScrollArea()
+        grid_scroll_area.setWidgetResizable(True)
+        grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Make Content Grid scrollable
+        view_scroll_content_widget = QWidget()
+        view_scroll_content_layout = QVBoxLayout(view_scroll_content_widget)
+        view_scroll_content_layout.setContentsMargins(10, 10, 10, 10)
+        view_scroll_content_layout.setSpacing(10)
+
+        # Actual Grid content
+        self.content_grid = QGridLayout(self)
+        self.content_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.content_grid.setContentsMargins(0, 0, 0, 0)
+        self.content_grid.setSpacing(10)
+
+        view_scroll_content_layout.addLayout(self.content_grid)
+        view_scroll_content_layout.addStretch(1) 
+
+        grid_scroll_area.setWidget(view_scroll_content_widget)
         
         # Special Button that mildly resembles Notion database' property system
         # Reference to "Add New" button widget
@@ -91,16 +108,7 @@ class CustomPropertyWidget(QWidget):
 
         # After initial setup, update state of Up/Down buttons
         self.update_updown_button_states()
-
-        # Make Content Grid scrollable
-        view_scroll_widget = QWidget()
-        view_scroll_widget.setLayout(self.content_grid)
-        grid_scroll_area = QScrollArea()
-        grid_scroll_area.setWidgetResizable(True)
-        grid_scroll_area.setWidget(view_scroll_widget)
-        grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-
+ 
         # --- End ---
         page_mainv_layout = QVBoxLayout(self)
         page_mainv_layout.setContentsMargins(15, 15, 15, 15)
@@ -172,7 +180,7 @@ class CustomPropertyWidget(QWidget):
                 row_data = {
                     "property_key": widget.property_key.text(),
                     "property_type": widget.property_type,
-                    "property_value": widget.property_value.text()
+                    "property_value": widget.property_value
                 }
                 data_to_save.append(row_data)
         
@@ -257,21 +265,23 @@ class CustomPropertyWidget(QWidget):
             self.main_label.setStyleSheet(MAIN_LABEL_DARK_QSS) 
 
     # --- Dynamic action logic ---     
-    def _add_new_row(self, property_key: str, property_type: str, property_value: str = ""):
+    def _add_new_row(self,  
+                     property_key: str, property_type: str, property_value: str = ""):
         """
         Creates a new CustomRowWidget and adds it to grid.
         This method is called when user clicks "Add New" button.
         new row is always added just above 'Add New' button.
         """ 
 
-        # Generate a unique ID for new row
+        # TODO: Generate a unique ID for new row
         # Changed to follow row position
-        
         row_id = self.current_row_id
         self.current_row_id += 1
 
         # Create CustomRowWidget instance
-        custom_row_widget = CustomRowWidget(row_id, property_key, property_type, property_value, self)
+        custom_row_widget = CustomRowWidget(row_id, property_key, property_type, property_value,  
+                                            types_of_properties=TYPES_OF_PROPERTIES, 
+                                            parent=self)
         # Store widget in dictionary for easy lookup by ID
         self.dict_row_widgets[row_id] = custom_row_widget
         
@@ -295,8 +305,7 @@ class CustomPropertyWidget(QWidget):
         button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup) # Shows a separate arrow for menu
 
         options_menu = QMenu(self) 
-        
-        
+
         for property_type in TYPES_OF_PROPERTIES: 
             property_text = property_type.capitalize().replace('_', ' ')
             options_text = QAction(property_text, self)
@@ -439,17 +448,7 @@ class CustomPropertyWidget(QWidget):
         """
         Handles value change requests from CustomRowWidget.
         Updates the corresponding property value in the config manager.
-        """ 
-
-        new_row = CustomRowWidget(row_id, new_key, new_type, new_value, self)
-        
-        self.dict_row_widgets[row_id] = new_row  
-
-        # Warning is handled by CustomRowWidget itself
-        # TODO: Duplicate this row with its content
-        # duplicate_row(row_id, new_key, new_type, new_value)
-        self.diary_manager.set_setting(f'dynamic_rows.{row_id}.property_type', new_type)
-        
+        """  
         self._save_template()  
     
     

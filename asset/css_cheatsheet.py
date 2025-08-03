@@ -2,8 +2,13 @@
 
 # Borrowing this place to put types_of_properties 
 TYPES_OF_PROPERTIES = [
-    "text", "number", "select", "multi_select", "checkbox"
+    "text", "number", "select", "multi_select", "status", "checkbox",
     ]
+# Future can have  
+# created_by, last_modified_by,
+# created_time,  last_modified_time,
+# location, last_modified_at, created_at, 
+# tags, etc for easier creation of custom properties <- waaaay too much work for now
 
 # --- Global Constants --- 
 GLOBAL_CAL_CELL_FONT_SIZE = 14

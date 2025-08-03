@@ -2,13 +2,27 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QSizePolicy,
     QVBoxLayout, QHBoxLayout, QGridLayout,
-    QWidget, QToolButton, QLabel, QLineEdit, QPushButton, QDateEdit, 
+    QWidget, QWidgetAction,
+    QToolButton, QLabel, QLineEdit, QPushButton, QDateEdit, 
     QScrollArea, QMenu, QMessageBox,
 )
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QMouseEvent
 from PyQt6.QtCore import Qt, QDate
 
 from asset.css_cheatsheet import TYPES_OF_PROPERTIES 
+
+class CustomLineEdit(QLineEdit):
+    """ 
+    This Line Edit is for Propery Key Editing
+    Double clicking selects all text."""
+    def __init__(self, parent=None): 
+        super().__init__(parent) 
+        # self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        # self.setPlaceholderText("Enter property key name...")
+
+    def mouseDoubleClickEvent(self):
+        self.selectAll()
+
 
 # --- Custom Row Widget ---
 class CustomRowWidget(QWidget):
@@ -75,6 +89,7 @@ class CustomRowWidget(QWidget):
 
         # Visual indicator of what this property is
         property_label = QAction(f"Type: {self.property_type.capitalize().replace('_', ' ')}", self) 
+        property_label.setDisabled(True)
         menu1.addAction(property_label)
 
         menu2 = self.edit_property(self.property_type)
@@ -116,19 +131,6 @@ class CustomRowWidget(QWidget):
             menu2 = self.edit_property_checkbox()
         
         return menu2
-    
-    def _change_type(self, type="text"): 
-        """
-        @param type: Type of property to add.
-        - text, number, select, multi_select, checkbox
-        """ 
-        old = self.property_type
-        self.property_type=type
-        self.value_changed_requested.emit(self.row_id, self.property_key.text(), self.property_type, self.property_value.text())
-        self._rename_property_key(new_key=self.property_key.text())  # Update the property key
-        self.menu1 = self._create_menu1()  # Recreate the menu with the new type
-        print(f"Property type changed from {old} to '{self.property_type}' for row {self.row_id}")
-
 
     def _generate_types(self):
         """
@@ -138,37 +140,59 @@ class CustomRowWidget(QWidget):
         for property_type in TYPES_OF_PROPERTIES: 
             property_text = property_type.capitalize().replace('_', ' ')
             options_text = QAction(property_text, self) 
-            options_text.triggered.connect(lambda checked, t=property_type: self._change_type(type=t)) 
+            options_text.triggered.connect(lambda checked, t=property_type: self._change_type(new_type=t)) 
             menu_change_type.addAction(options_text) 
         
         menu_change_type.setTitle("Change Type")
         menu_change_type.setToolTip("Change Property Type")
+        
 
         return menu_change_type
+
+    # --- Custom reaction functions ---
+    def _change_type(self, new_type="text"): 
+        """
+        @param type: Type of property to add.
+        - text, number, select, multi_select, checkbox
+        """ 
+        old = self.property_type
+        # self.property_type=type
+        # self.menu1 = self._create_menu1()  # Recreate the menu with the new type
+        print(f"Property type changed from '{old}' to '{self.property_type}' for row {self.row_id}")
+        self.value_changed_requested.emit(self.row_id, self.property_key.text(), new_type, self.property_value.text())
+        
     
     def _rename_property_key(self, new_key):
         """
         Renames the property key.
         """
         self.property_key.setText(new_key) 
+        self.value_changed_requested.emit(self.row_id, self.property_key.text(), self.property_type, self.property_value.text())
+        
 
-
+    # --- Edit Property Functions ---
+    # Common edit property function.
+    
+        
+    # --- Specific Property Type Functions ---
     def edit_property_text(self):
         """
         Creates a menu for text property type.
         """
         menu = QMenu(self)
+        
+        # BUG: doesn't react to double_click selectAll() 
+        # Maybe turn this whole thing into a Dialog
+        self.name_line_edit = QLineEdit()
+        self.name_line_edit.setText(self.property_key.text())
+        self.name_line_edit.returnPressed.connect(
+            lambda: self._rename_property_key(new_key=self.name_line_edit.text()))
+        option_key_edit = QWidgetAction(menu) 
+        option_key_edit.setDefaultWidget(self.name_line_edit)
+        menu.addAction(option_key_edit)
 
         menu_change_type = self._generate_types()
-        menu.addMenu(menu_change_type) 
-        
-        options_text = QAction("Text Property", self)
-        options_text.triggered.connect(lambda: print(f"Text Property in row {self.row_id} clicked!"))
-        menu.addAction(options_text)
-        
-        options_text = QAction("Edit Text Property", self)
-        options_text.triggered.connect(lambda: print(f"Edit Text Property in row {self.row_id} clicked!"))
-        menu.addAction(options_text)
+        menu.addMenu(menu_change_type)  
 
         return menu 
     

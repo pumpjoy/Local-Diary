@@ -81,16 +81,16 @@ class CustomPropertyWidget(QWidget):
 
         # Dictionary to store CustomRowWidget instances, mapped by unique row_id
         self.dict_row_widgets = {}
-        self.current_row_id = 0 # Counter for generating unique row_ids
+        self.current_row_id = 0 # Counter for generating unique row_ids # Follows row position
         
         # Special Button that mildly resembles Notion database' property system
         # Reference to "Add New" button widget
         # Will always be at the very bottom of grid
         self.add_new_button_widget = None
-        self.add_new_row_button()
+        self._add_new_row_button()
 
         # After initial setup, update state of Up/Down buttons
-        self.update_button_states()
+        self.update_updown_button_states()
 
         # Make Content Grid scrollable
         view_scroll_widget = QWidget()
@@ -202,12 +202,12 @@ class CustomPropertyWidget(QWidget):
                 property_key = row_data.get(f"property_key", "Loaded Item")
                 property_type = row_data.get("property_type", "text")
                 property_value = row_data.get("property_value", "No Data Loaded")
-                self.add_row(property_key, property_type, property_value)
+                self._add_new_row(property_key, property_type, property_value)
         else:
             print("No dynamic rows (template) found in config. Starting with an empty template.")
             self._rebuild_layout_from_order([])
 
-        self.update_button_states()
+        self.update_updown_button_states()
 
     def _clear_all_rows(self):
         """Helper to clear all DraggableRowWidgets from the grid."""
@@ -256,48 +256,17 @@ class CustomPropertyWidget(QWidget):
         else: # dark theme 
             self.main_label.setStyleSheet(MAIN_LABEL_DARK_QSS) 
 
-    # --- Dynamic action logic --- 
-    
-    def add_edit(self, typeis="text"): 
-        """
-        @param typeis: Type of property to add.
-        - text, number, select, multi_select, checkbox
-        """
-        print(f"Custom Property: Add {typeis} pressed")  
-        self.add_row(property_key=f"{typeis.capitalize().replace('_', ' ')} {self.current_row_id}", 
-                     property_type=typeis, 
-                     property_value=f"{typeis.capitalize().replace('_', ' ')} for {self.current_row_id}") 
-        
-    def add_new_row_button(self): 
-        button = QToolButton()
-        button.setText(f"Add New Property")
-        button.setMinimumSize(100, 25)
-        button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup) # Shows a separate arrow for menu
-
-        options_menu = QMenu(self) 
-
-        for property_type in TYPES_OF_PROPERTIES: 
-            property_text = property_type.capitalize().replace('_', ' ')
-            options_text = QAction(property_text, self)
-            # NOTE: This lambda uses closure to capture current property_type, 
-            # Without it, all actions would use the last property_type in the loop.
-            # This is because without closure, lambda captures the variable, not its value.
-            # i.e. reference to property_type, 
-            # not its value at the time of creation. (Hence final value of TYPES_OF_PROPERTIES)
-            options_text.triggered.connect(lambda checked, t=property_type: self.add_edit(typeis=t)) 
-            options_menu.addAction(options_text)  
-
-        button.setMenu(options_menu)
-
-        self.add_new_button_widget = button 
-        self._rebuild_layout_from_order(self._get_current_order())
-
-    def add_row(self, property_key: str, property_type: str, property_value: str = ""):
+    # --- Dynamic action logic ---     
+    def _add_new_row(self, property_key: str, property_type: str, property_value: str = ""):
         """
         Creates a new CustomRowWidget and adds it to grid.
+        This method is called when user clicks "Add New" button.
         new row is always added just above 'Add New' button.
-        """
+        """ 
+
         # Generate a unique ID for new row
+        # Changed to follow row position
+        
         row_id = self.current_row_id
         self.current_row_id += 1
 
@@ -318,6 +287,37 @@ class CustomPropertyWidget(QWidget):
         # new row is added to end of current order, and then layout is rebuilt.
         # This ensures it appears above "Add New" button.
 
+
+    def _add_new_row_button(self): 
+        button = QToolButton()
+        button.setText(f"Add New Property")
+        button.setMinimumSize(100, 25)
+        button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup) # Shows a separate arrow for menu
+
+        options_menu = QMenu(self) 
+        
+        
+        for property_type in TYPES_OF_PROPERTIES: 
+            property_text = property_type.capitalize().replace('_', ' ')
+            options_text = QAction(property_text, self)
+            # NOTE: This lambda uses closure to capture current property_type, 
+            # Without it, all actions would use the last property_type in the loop.
+            # This is because without closure, lambda captures the variable, not its value.
+            # i.e. reference to property_type, 
+            # not its value at the time of creation. (Hence final value of TYPES_OF_PROPERTIES)
+            options_text.triggered.connect(lambda checked, t=property_type: 
+                                           self._add_new_row(
+                                                property_key=f"{t.capitalize().replace('_', ' ')} {self.current_row_id}",
+                                                property_type=t, 
+                                                property_value=f"{t.capitalize().replace('_', ' ')} for {self.current_row_id}"))
+            options_menu.addAction(options_text)  
+
+        button.setMenu(options_menu)
+
+        self.add_new_button_widget = button 
+        self._rebuild_layout_from_order(self._get_current_order())
+
+    
     def _get_current_order(self) -> list[int]:
         """
         Inspects QGridLayout to determine current visual order
@@ -335,6 +335,25 @@ class CustomPropertyWidget(QWidget):
                 if isinstance(widget, CustomRowWidget):
                     order.append(widget.row_id)
         return order
+    
+    
+
+    # --- Custom Row Request Handling ---
+    
+    def update_updown_button_states(self):
+        """
+        Iterates through all CustomRowWidget instances and enables/disables
+        their 'Up' and 'Down' buttons based on their current position in grid.
+        """
+        current_order_ids = self._get_current_order()
+        num_custom_rows = len(current_order_ids)
+
+        for i, row_id in enumerate(current_order_ids):
+            widget = self.dict_row_widgets[row_id]
+            # Enable 'Up' button if it's not first custom row
+            widget.up_button.setEnabled(i > 0) 
+            # Enable 'Down' button if it's not last custom row
+            widget.down_button.setEnabled(i < num_custom_rows - 1)
 
     def move_row_up(self, row_id_to_move: int):
         """
@@ -356,7 +375,7 @@ class CustomPropertyWidget(QWidget):
             # This should ideally not happen if row_id_to_move is valid
             print(f"Error: Row with ID {row_id_to_move} not found in current order.")
         
-        self.update_button_states() # Update button states after move
+        self.update_updown_button_states() # Update button states after move
 
     def move_row_down(self, row_id_to_move: int):
         """
@@ -376,7 +395,7 @@ class CustomPropertyWidget(QWidget):
         except ValueError: 
             print(f"Error: Row with ID {row_id_to_move} not found in current order.")
             
-        self.update_button_states() # Update button states after move
+        self.update_updown_button_states() # Update button states after move
 
     def delete_row(self, row_id_to_delete: int):
         """
@@ -410,29 +429,30 @@ class CustomPropertyWidget(QWidget):
             self.dict_row_widgets.pop(row_id_to_delete, None)
             widget_to_delete.deleteLater()
             self._rebuild_layout_from_order(current_order_ids)
-            self.update_button_states() # Update button states for remaining rows
+            self.update_updown_button_states() # Update button states for remaining rows
             self._save_template()
         else:
             print(f"Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
 
+    # Value change in CustomRowWidget
     def value_changed(self, row_id: int, new_key: str, new_type: str, new_value: str):
         """
         Handles value change requests from CustomRowWidget.
         Updates the corresponding property value in the config manager.
-        """
-        widget = self.dict_row_widgets.get(row_id)
-        if widget:
-            # Update the property value in the config manager
-            widget.property_value.setText("") # Removes everything in the property value
-            # Warning is handled by CustomRowWidget itself
-            # TODO: Duplicate this row with its content
-            # duplicate_row(row_id, new_key, new_type, new_value)
-            self.diary_manager.set_setting(f'dynamic_rows.{row_id}.property_type', new_type)
-            self._save_template() 
-        else:
-            print(f"Error: Row with ID {row_id} not found for value update.")
+        """ 
+
+        new_row = CustomRowWidget(row_id, new_key, new_type, new_value, self)
         
-        self.update_button_states()
+        self.dict_row_widgets[row_id] = new_row  
+
+        # Warning is handled by CustomRowWidget itself
+        # TODO: Duplicate this row with its content
+        # duplicate_row(row_id, new_key, new_type, new_value)
+        self.diary_manager.set_setting(f'dynamic_rows.{row_id}.property_type', new_type)
+        
+        self._save_template()  
+    
+    
 
     def duplicate_row_with_content(self, row_id: int, new_key: str, new_type: str, new_value: str):
         """
@@ -446,23 +466,6 @@ class CustomPropertyWidget(QWidget):
         Creates a new CustomRowWidget with the same properties as the original.
         """
         print(f"Duplicating row {row_id} with key '{new_key}' and type '{new_type}'")
-        self.add_row(property_key=new_key, property_type=new_type, property_value=new_value)
-        
-        # Update the newly created row's ID to be unique
-        new_row_id = self.current_row_id - 1
+        # CANNOT USE _ADD_NEW_ROW
+        # self._add_new_row(property_key=new_key, property_type=new_type, property_value=new_value)
 
-
-    def update_button_states(self):
-        """
-        Iterates through all CustomRowWidget instances and enables/disables
-        their 'Up' and 'Down' buttons based on their current position in grid.
-        """
-        current_order_ids = self._get_current_order()
-        num_custom_rows = len(current_order_ids)
-
-        for i, row_id in enumerate(current_order_ids):
-            widget = self.dict_row_widgets[row_id]
-            # Enable 'Up' button if it's not first custom row
-            widget.up_button.setEnabled(i > 0) 
-            # Enable 'Down' button if it's not last custom row
-            widget.down_button.setEnabled(i < num_custom_rows - 1)

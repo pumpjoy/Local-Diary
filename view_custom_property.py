@@ -288,13 +288,10 @@ class CustomPropertyWidget(QWidget):
         custom_row_widget.duplicate_with_content_requested.connect(self.duplicate_row_with_content)
 
         
-        current_order = self._get_current_order()
-        print(f"current order={ current_order[:position]} | position={position}")
+        current_order = self._get_current_order() 
         if position is None:
             # New item
-            new_order = current_order + [row_id]
-            print(f"New order = {new_order}")
-
+            new_order = current_order + [row_id] 
         else:
             # Insert duplicated row
             # If position is a row_id, convert to index
@@ -310,8 +307,7 @@ class CustomPropertyWidget(QWidget):
                 # If position is already an index, use as is
                 # This is an error handle -> somehow current_order element is not a number
                 insert_at = position + 1 if isinstance(position, int) else len(current_order)
-            new_order = current_order[:insert_at] + [row_id] + current_order[insert_at:]
-            print(f"New order = {new_order}")
+            new_order = current_order[:insert_at] + [row_id] + current_order[insert_at:] 
 
         # Rebuild entire layout to incorporate new row in its correct position
         self._rebuild_layout_from_order(new_order)

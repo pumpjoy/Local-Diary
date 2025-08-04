@@ -12,11 +12,8 @@ class DiaryPropertyConfiguration:
         Sets up the path to the config file and loads existing settings or defaults.
         """
         self.organization_name = organization_name
-        self.application_name = application_name
-        self.edit_mode = edit_mode
-        self.date = date
-
-        self.edit_mode = self.change_mode(edit_mode)
+        self.application_name = application_name 
+        self.change_mode(edit_mode)
 
         self.config_data = {}
  
@@ -53,7 +50,7 @@ class DiaryPropertyConfiguration:
             os.makedirs(data_dir)
         return data_dir
     
-    def change_mode(self, edit_mode: bool):
+    def change_mode(self, edit_mode: bool, date=None):
         """
         Changes the mode of the configuration manager.
         If edit_mode is True, it uses the config directory.
@@ -64,12 +61,13 @@ class DiaryPropertyConfiguration:
             self.config_dir = self._get_config_directory()
             self.config_file_path = os.path.join(self.config_dir, "diary_property.json")
         else:
-            if self.date is None:
+            if date is None:
                 raise ValueError("Date must be set when not in edit mode.")
             self.config_dir = self.get_data_directory()
-            self.config_file_path = os.path.join(self.config_dir, f"{self.date}.json")
+            self.config_file_path = os.path.join(self.config_dir, f"entry_{date}.json")
         
         self._ensure_config_directory_exists()
+        return self.config_file_path
 
 
     def _ensure_config_directory_exists(self):

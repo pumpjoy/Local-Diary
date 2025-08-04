@@ -442,23 +442,17 @@ class CustomRowWidget(QWidget):
 
     def _update_widgets(self):
         if self.property_type == "text":
-            print("text")
             self.text_line_edit.setValidator(None)
             self.content_stack.setCurrentWidget(self.text_line_edit)
         elif self.property_type == "number":
-            print("number")
             int_validator = QIntValidator()
             self.text_line_edit.setValidator(int_validator)
             self.content_stack.setCurrentWidget(self.text_line_edit)
         elif self.property_type == "select":
-            print("select")
             self.content_stack.setCurrentWidget(self.select_bt)
         elif self.property_type == "multi_select":
-            print("multi select")
             self.content_stack.setCurrentWidget(self.multi_select_bt)
         elif self.property_type == "status":
-            print("status")
             self.content_stack.setCurrentWidget(self.status_bt)
         elif self.property_type == "checkbox":
-            print("checkbox")
             self.content_stack.setCurrentWidget(self.checkbox_bt)

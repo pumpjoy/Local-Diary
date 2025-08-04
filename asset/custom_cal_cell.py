@@ -1,3 +1,4 @@
+import datetime
 from PyQt6.QtWidgets import (
     QSizePolicy,
     QGroupBox, QVBoxLayout, QHBoxLayout,
@@ -5,17 +6,20 @@ from PyQt6.QtWidgets import (
 ) 
 from PyQt6.QtCore import Qt 
 
+from helper.diary_property_manager import DiaryPropertyConfiguration
+
 from asset.css_cheatsheet import(
     GLOBAL_CAL_HEAD_MARGIN,
 )
 
 class CalendarCellWidget(QWidget):
-    def __init__(self, text="", is_today=False, *args, **kwargs):
+    def __init__(self, dateis="", full_date:datetime=None, is_today=False, *args, **kwargs):
         super().__init__(*args, **kwargs)  
         
-        self.is_today = is_today
+        self.is_today = is_today 
         self.date_label_margin = 4
         self.bt_add_new_entry_margin = 4
+        self.full_date=full_date.strftime('%Y-%m-%d') 
 
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
@@ -41,8 +45,9 @@ class CalendarCellWidget(QWidget):
         self.bt_add_new_entry.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.bt_add_new_entry.setStyleSheet(f"margin: {self.bt_add_new_entry_margin}px;")
         self.bt_add_new_entry.setFixedSize(30, 30) 
+        self.bt_add_new_entry.clicked.connect(self._add_new_entry)
         
-        self.date_label = QLabel(text=text) 
+        self.date_label = QLabel(text=dateis) 
         self.date_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)   
         self.date_label.setStyleSheet(f"border: 1px solid transparent; background: transparent; margin: {self.date_label_margin}px;")
 
@@ -58,6 +63,7 @@ class CalendarCellWidget(QWidget):
         # Get from json
 
 
+
     def cus_set_text(self, text):
         self.date_label.setText(text)
 
@@ -66,6 +72,24 @@ class CalendarCellWidget(QWidget):
 
     def today_style(self, style):
         self.date_label.setStyleSheet(style)
+
+
+    def _add_new_entry(self):
+        from PyQt6.QtWidgets import QMessageBox
+        try:
+            import shutil
+            """Adds new entry date.json based on template."""
+            self.diary_config = DiaryPropertyConfiguration()
+            template_path = self.diary_config.change_mode(edit_mode=True) 
+            entry_path = self.diary_config.change_mode(edit_mode=False, date=self.full_date)
+            print(f"template_path = {template_path}")
+            print(f"entry_path = {entry_path}")
+            shutil.copy(template_path, entry_path)
+            # QMessageBox.information(None, "Success", f"Template successfully copied and renamed to {entry_path}")
+            # NEW: tell view_main to reload this specific view
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
+            QMessageBox.critical(None, "Error", f"An error occurred: {str(e)}")
 
 class CalendarHeaderWidget(QWidget):
     # FUTURE: Stays a widget until further actions

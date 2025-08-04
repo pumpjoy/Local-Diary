@@ -211,7 +211,7 @@ class MyWindow(QWidget):
                     cell_widget = CalendarHeaderWidget(f"{days[col]}") 
                 else:  
                     # Date cells
-                    cell_widget = CalendarCellWidget(f"{this_month[(row - 1) * self.cal_month_num_cols + col].day}") 
+                    cell_widget = CalendarCellWidget(dateis=f"{this_month[(row - 1) * self.cal_month_num_cols + col].day}", full_date=this_date) 
                 
                 self.calendar_widgets_reference[(row, col)] = cell_widget  # Store reference for later use
 

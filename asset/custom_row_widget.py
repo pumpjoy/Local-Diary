@@ -15,8 +15,7 @@ from asset.css_cheatsheet import TYPES_OF_PROPERTIES
 class CustomRowWidget(QWidget):
     """
     A custom widget representing a single row in grid,
-    containing Up/Down buttons, a button (property), and a line edit.
-    TODO: Line Edit to be edited according to property type.
+    containing Up/Down buttons, a button (property), and a line edit. 
     TODO: image asset for `Up`, `Down` and `Delete` instead of Unicode and Emoji.
     It emits signals when its Up/Down buttons are clicked.
     """
@@ -24,19 +23,20 @@ class CustomRowWidget(QWidget):
     move_down_requested = pyqtSignal(int)  # Signal: emitted when 'Down' button is clicked (passes row_id)
     delete_requested = pyqtSignal(int)    # Signal: emitted when 'Delete' button is clicked (passes row_id)
     value_changed_requested = pyqtSignal(int, str, str, str)  # Signal: emitted when value is changed (passes row_id and 3 new values)
+    duplicate_no_content_requested =  pyqtSignal(int, str, str) # Signal: duplicate row without content
+    duplicate_with_content_requested =  pyqtSignal(int, str, str, str) # Signal: duplicate row with content
+
 
     def __init__(self, row_id: int, 
-                 property_key_content: str, property_type: str, property_value_content: str = "",
+                 property_key_content: str, property_type: str, property_value: str = "",
                  types_of_properties: list[str]=None,
                  parent=None):
         super().__init__(parent)
 
         self.row_id = row_id
         self.property_key_content = property_key_content
-        self.property_type = property_type
-        self.property_value_content = property_value_content
-        self.property_value = self.property_value_content # TODO: TEMPORARY
-        print(f"Creating CustomRowWidget for row {self.row_id} with property type '{self.property_type}' and value '{self.property_value_content}'")
+        self.property_type = property_type 
+        self.property_value = property_value
 
         self.types_of_properties = types_of_properties
         
@@ -79,14 +79,24 @@ class CustomRowWidget(QWidget):
         self.text_line_edit = QLineEdit()
         # self.text_line_edit.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         # self.text_line_edit.setFixedHeight(10)
-        self.text_line_edit.setText(self.property_value_content)
+        self.text_line_edit.setText(self.property_value)
         self.text_line_edit.textChanged.connect(self._handle_text_line_changed)
         self.content_stack.addWidget(self.text_line_edit)
 
-        # Widget for Select, Multi Select:
+        # Widget for Select:
         self.select_bt = QPushButton("Click Me (Select)")
-        self.select_bt.clicked.connect(lambda: print("Select / Multiselect clicked."))
+        self.select_bt.clicked.connect(lambda: print("Select clicked"))
         self.content_stack.addWidget(self.select_bt)
+
+        # Widget for Multi Select:
+        self.multi_select_bt = QPushButton("Click Me (Multi Select)")
+        self.multi_select_bt.clicked.connect(lambda: print("Multi Select clicked."))
+        self.content_stack.addWidget(self.multi_select_bt)
+
+        # Widget for Status:
+        self.status_bt = QPushButton("Click Me (Status)")
+        self.status_bt.clicked.connect(lambda: print("Status clicked."))
+        self.content_stack.addWidget(self.status_bt)
 
         # Widget for Checkbox:
         self.checkbox_bt = QPushButton("Click Me (Checkbox)")
@@ -133,7 +143,7 @@ class CustomRowWidget(QWidget):
         name_line_edit.returnPressed.connect(
             lambda: self._rename_property_key(new_key=self.name_line_edit.text()))
         return name_line_edit
-    
+
     def _rename_property_key(self, new_key):
         """
         Renames the property key.
@@ -141,13 +151,58 @@ class CustomRowWidget(QWidget):
         self.property_key.setText(new_key)
         self.value_changed_requested.emit(
             self.row_id, self.property_key.text(), self.property_type, self.property_value)
-    
+ 
+    def _create_properties_common_menu_options(self):
+        """
+        Creates 
+            a line edit to edit property_key value,
+            an action for     
+        """
+        # BUG: doesn't react to double_click selectAll() 
+        # Maybe turn this whole thing into a Dialog
+        name_line_edit = QLineEdit()
+        name_line_edit.setText(self.property_key.text())
+         
+
+        name_line_edit.returnPressed.connect(
+            lambda: self._rename_property_key(new_key=self.name_line_edit.text()))
+        
+        # Visual indicator of what this property is
+        property_label = QAction(f"Type: {self.property_type.capitalize().replace('_', ' ')}", self) 
+        property_label.setDisabled(True)
+        
+        ### Property Change
+        menu_change_type = self._generate_menu_types()
+        menu_change_type.setTitle("Edit Property Type")
+        menu_change_type.setToolTip("Edit Property Type")
+
+        
+        ### Other options
+        options_visibility = QAction("Property Visibility", self)
+        options_visibility.triggered.connect(lambda: print(f"Property Visibility in row {self.row_id} clicked!"))
+
+        options_duplicate_no_content = QAction("Duplicate without Content Property", self)
+        options_duplicate_no_content.triggered.connect(lambda: self.duplicate_no_content_requested.emit(self.row_id, self.property_key.text(), self.property_type))
+        
+        options_duplicate_with_content = QAction("Duplicate with Content Property", self)
+        options_duplicate_with_content.triggered.connect(lambda: self.duplicate_with_content_requested.emit(self.row_id, self.property_key.text(), self.property_type, self.property_value))
+        
+        options_delete = QAction("Delete Property", self)
+        options_delete.triggered.connect(lambda: self.delete_requested.emit(self.row_id))
+
+        return name_line_edit, property_label, menu_change_type, options_visibility, options_duplicate_no_content, options_duplicate_with_content, options_delete
+
+
+    # --- Actual Properties ---
     ### Text
     def _create_menu_for_text(self):
         """
         Creates a menu for text property type.
         """
         menu = QMenu(self)
+        self.name_line_edit, property_label, menu_change_type, \
+            options_visibility, options_duplicate_no_content, options_duplicate_with_content, options_delete = \
+            self._create_properties_common_menu_options()
         
         ### Line edit to edit property name
         self.name_line_edit = self._create_line_edit_name()
@@ -156,30 +211,17 @@ class CustomRowWidget(QWidget):
         menu.addAction(option_key_edit)
         
         ### Property Change
-        # Visual indicator of what this property is
-        property_label = QAction(f"Type: {self.property_type.capitalize().replace('_', ' ')}", self) 
-        property_label.setDisabled(True)
+        # Label to see property type
         menu.addAction(property_label)
-
         # Menu for Property Type Change
-        menu_change_type = self._generate_menu_types()
-        menu_change_type.setTitle("Edit Property Type")
-        menu_change_type.setToolTip("Edit Property Type")
         menu.addMenu(menu_change_type)
- 
+        # Special: Menu for Text
         menu.addSeparator() 
 
         ### Other options
-        options_visibility = QAction("Property Visibility", self)
-        options_visibility.triggered.connect(lambda: print(f"Property Visibility in row {self.row_id} clicked!"))
         menu.addAction(options_visibility)
-        
-        options_duplicate = QAction("Duplicate Property", self)
-        options_duplicate.triggered.connect(lambda: print(f"Duplicate Property in row {self.row_id} clicked!"))
-        menu.addAction(options_duplicate)
-        
-        options_delete = QAction("Delete Property", self)
-        options_delete.triggered.connect(lambda: self.delete_requested.emit(self.row_id))
+        menu.addAction(options_duplicate_no_content)
+        menu.addAction(options_duplicate_with_content)
         menu.addAction(options_delete)
 
         return menu 
@@ -190,18 +232,29 @@ class CustomRowWidget(QWidget):
         Creates a menu for number property type.
         """
         menu = QMenu(self)
-
+        self.name_line_edit, property_label, menu_change_type, \
+            options_visibility, options_duplicate_no_content, options_duplicate_with_content, options_delete = \
+            self._create_properties_common_menu_options()
+        
+        ### Line edit to edit property name
         self.name_line_edit = self._create_line_edit_name()
         option_key_edit = QWidgetAction(menu) 
         option_key_edit.setDefaultWidget(self.name_line_edit)
         menu.addAction(option_key_edit)
-
-        menu_change_type = self._generate_menu_types()
-        menu.addMenu(menu_change_type) 
         
-        options_text = QAction("Number Property", self)
-        options_text.triggered.connect(lambda: print(f"Number Property in row {self.row_id} clicked!"))
-        menu.addAction(options_text) 
+        ### Property Change
+        # Label to see property type
+        menu.addAction(property_label)
+        # Menu for Property Type Change
+        menu.addMenu(menu_change_type)
+        # Special: Menu for Text
+        menu.addSeparator() 
+
+        ### Other options
+        menu.addAction(options_visibility)
+        menu.addAction(options_duplicate_no_content)
+        menu.addAction(options_duplicate_with_content)
+        menu.addAction(options_delete)
 
         return menu 
     
@@ -211,19 +264,29 @@ class CustomRowWidget(QWidget):
         Creates a menu for select property type.
         """
         menu = QMenu(self)
-
+        self.name_line_edit, property_label, menu_change_type, \
+            options_visibility, options_duplicate_no_content, options_duplicate_with_content, options_delete = \
+            self._create_properties_common_menu_options()
+        
+        ### Line edit to edit property name
         self.name_line_edit = self._create_line_edit_name()
         option_key_edit = QWidgetAction(menu) 
         option_key_edit.setDefaultWidget(self.name_line_edit)
         menu.addAction(option_key_edit)
-
-
-        menu_change_type = self._generate_menu_types()
-        menu.addMenu(menu_change_type) 
         
-        options_text = QAction("Select Property", self)
-        options_text.triggered.connect(lambda: print(f"Number Property in row {self.row_id} clicked!"))
-        menu.addAction(options_text)
+        ### Property Change
+        # Label to see property type
+        menu.addAction(property_label)
+        # Menu for Property Type Change
+        menu.addMenu(menu_change_type)
+        # Special: Menu for Text
+        menu.addSeparator() 
+
+        ### Other options
+        menu.addAction(options_visibility)
+        menu.addAction(options_duplicate_no_content)
+        menu.addAction(options_duplicate_with_content)
+        menu.addAction(options_delete)
 
         return menu 
     
@@ -233,39 +296,93 @@ class CustomRowWidget(QWidget):
         Creates a menu for multi select property type.
         """
         menu = QMenu(self)
-
+        self.name_line_edit, property_label, menu_change_type, \
+            options_visibility, options_duplicate_no_content, options_duplicate_with_content, options_delete = \
+            self._create_properties_common_menu_options()
+        
+        ### Line edit to edit property name
         self.name_line_edit = self._create_line_edit_name()
         option_key_edit = QWidgetAction(menu) 
         option_key_edit.setDefaultWidget(self.name_line_edit)
         menu.addAction(option_key_edit)
-
-        menu_change_type = self._generate_menu_types()
-        menu.addMenu(menu_change_type) 
         
-        options_text = QAction("Multi Select Property", self)
-        options_text.triggered.connect(lambda: print(f"Multi Select Property in row {self.row_id} clicked!"))
-        menu.addAction(options_text)
+        ### Property Change
+        # Label to see property type
+        menu.addAction(property_label)
+        # Menu for Property Type Change
+        menu.addMenu(menu_change_type)
+        # Special: Menu for Text
+        menu.addSeparator() 
+
+        ### Other options
+        menu.addAction(options_visibility)
+        menu.addAction(options_duplicate_no_content)
+        menu.addAction(options_duplicate_with_content)
+        menu.addAction(options_delete)
 
         return menu 
     
+    ### Status
+    def _create_menu_for_status(self):
+        """
+        Creates a menu for status property type.
+        """
+        menu = QMenu(self)
+        self.name_line_edit, property_label, menu_change_type, \
+            options_visibility, options_duplicate_no_content, options_duplicate_with_content, options_delete = \
+            self._create_properties_common_menu_options()
+        
+        ### Line edit to edit property name
+        self.name_line_edit = self._create_line_edit_name()
+        option_key_edit = QWidgetAction(menu) 
+        option_key_edit.setDefaultWidget(self.name_line_edit)
+        menu.addAction(option_key_edit)
+        
+        ### Property Change
+        # Label to see property type
+        menu.addAction(property_label)
+        # Menu for Property Type Change
+        menu.addMenu(menu_change_type)
+        # Special: Menu for Text
+        menu.addSeparator() 
+
+        ### Other options
+        menu.addAction(options_visibility)
+        menu.addAction(options_duplicate_no_content)
+        menu.addAction(options_duplicate_with_content)
+        menu.addAction(options_delete)
+
+        return menu 
+
     ### Checkbox
     def _create_menu_for_checkbox(self):
         """
         Creates a menu for checkbox property type.
         """
         menu = QMenu(self)
-
+        self.name_line_edit, property_label, menu_change_type, \
+            options_visibility, options_duplicate_no_content, options_duplicate_with_content, options_delete = \
+            self._create_properties_common_menu_options()
+        
+        ### Line edit to edit property name
         self.name_line_edit = self._create_line_edit_name()
         option_key_edit = QWidgetAction(menu) 
         option_key_edit.setDefaultWidget(self.name_line_edit)
         menu.addAction(option_key_edit)
-
-        menu_change_type = self._generate_menu_types()
-        menu.addMenu(menu_change_type) 
         
-        options_text = QAction("Checkbox Property", self)
-        options_text.triggered.connect(lambda: print(f"Checkbox Property in row {self.row_id} clicked!"))
-        menu.addAction(options_text)
+        ### Property Change
+        # Label to see property type
+        menu.addAction(property_label)
+        # Menu for Property Type Change
+        menu.addMenu(menu_change_type)
+        # Special: Menu for Text
+        menu.addSeparator() 
+
+        ### Other options
+        menu.addAction(options_visibility)
+        menu.addAction(options_duplicate_no_content)
+        menu.addAction(options_duplicate_with_content)
+        menu.addAction(options_delete)
 
         return menu 
      
@@ -273,7 +390,7 @@ class CustomRowWidget(QWidget):
     ### Type: Text, Number
     def _handle_text_line_changed(self, text):
         """Updates the self.text_line_edit"""
-        self.property_value_content = text
+        self.property_value = text
 
     # --- Functions for handling updates at changes ---
     def _set_row_type(self, new_type: str):
@@ -282,9 +399,17 @@ class CustomRowWidget(QWidget):
         Switches the visible widget in the self.content_stack based on the row's type.
         """
         if self.property_type != new_type:
+            old = self.property_type.capitalize().replace('_', ' ')
+            print(f"old = {old} | property_key = {self.property_key.text() }")
+
             self.property_type = new_type
             text = self.property_type.capitalize().replace('_', ' ')
             self.type_label_action.setText(text)
+        
+            # Checks if Property Title is changed, if not, change it 
+            if self.property_key.text() == old:
+                self.property_key.setText(text)
+            
             self._update_menu()
             self._update_widgets() 
 
@@ -303,6 +428,8 @@ class CustomRowWidget(QWidget):
             menu2 = self._create_menu_for_select()
         elif self.property_type == "multi_select":
             menu2 = self._create_menu_for_multi_select()
+        elif self.property_type == "status":
+            menu2 = self._create_menu_for_status()
         elif self.property_type == "checkbox":
             menu2 = self._create_menu_for_checkbox()
         else:
@@ -326,9 +453,12 @@ class CustomRowWidget(QWidget):
         elif self.property_type == "select":
             print("select")
             self.content_stack.setCurrentWidget(self.select_bt)
-        elif self.property_type == "multi select":
+        elif self.property_type == "multi_select":
             print("multi select")
-            self.content_stack.setCurrentWidget(self.select_bt)
+            self.content_stack.setCurrentWidget(self.multi_select_bt)
+        elif self.property_type == "status":
+            print("status")
+            self.content_stack.setCurrentWidget(self.status_bt)
         elif self.property_type == "checkbox":
             print("checkbox")
             self.content_stack.setCurrentWidget(self.checkbox_bt)

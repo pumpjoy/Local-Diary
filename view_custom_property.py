@@ -260,16 +260,16 @@ class CustomPropertyWidget(QWidget):
 
     # --- Dynamic action logic ---     
     def _add_new_row(self,  
-                     property_key: str, property_type: str, property_value: str = ""):
+                     property_key: str, property_type: str, property_value: str = "", position: int = None):
         """
         Creates a new CustomRowWidget and adds it to grid.
         This method is called when user clicks "Add New" button.
         new row is always added just above 'Add New' button.
-        """ 
-
-        # TODO: Generate a unique ID for new row
+        New: Position, to reuse this method during duplication of row.
+        @param: position (int) If add new row is not None, adds below position
+        """  
         # Changed to follow row position
-        row_id = self.current_row_id
+        row_id = self.current_row_id 
         self.current_row_id += 1
 
         # Create CustomRowWidget instance
@@ -283,11 +283,38 @@ class CustomPropertyWidget(QWidget):
         custom_row_widget.move_up_requested.connect(self.move_row_up)
         custom_row_widget.move_down_requested.connect(self.move_row_down) 
         custom_row_widget.delete_requested.connect(self.delete_row) 
-        custom_row_widget.value_changed_requested.connect(self.value_changed) 
+        custom_row_widget.value_changed_requested.connect(lambda: self._save_template()) 
+        custom_row_widget.duplicate_no_content_requested.connect(self.duplicate_row_no_content)
+        custom_row_widget.duplicate_with_content_requested.connect(self.duplicate_row_with_content)
 
+        
+        current_order = self._get_current_order()
+        print(f"current order={ current_order[:position]} | position={position}")
+        if position is None:
+            # New item
+            new_order = current_order + [row_id]
+            print(f"New order = {new_order}")
+
+        else:
+            # Insert duplicated row
+            # If position is a row_id, convert to index
+            # Essentially creates a new ID for this duplicated item
+            if position in current_order:
+                # Checks if position exists in current order
+                # E.g. current order=[0, 2, 1, 3, 4,]; position=2
+                # It would be bugged and enter the dupe below 1 instead of 2
+                # This is because I don't save specific index for each row/properties
+                idx = current_order.index(position)
+                insert_at = idx + 1
+            else:
+                # If position is already an index, use as is
+                # This is an error handle -> somehow current_order element is not a number
+                insert_at = position + 1 if isinstance(position, int) else len(current_order)
+            new_order = current_order[:insert_at] + [row_id] + current_order[insert_at:]
+            print(f"New order = {new_order}")
 
         # Rebuild entire layout to incorporate new row in its correct position
-        self._rebuild_layout_from_order(self._get_current_order() + [row_id])
+        self._rebuild_layout_from_order(new_order)
         # new row is added to end of current order, and then layout is rebuilt.
         # This ensures it appears above "Add New" button.
 
@@ -310,7 +337,7 @@ class CustomPropertyWidget(QWidget):
             # not its value at the time of creation. (Hence final value of TYPES_OF_PROPERTIES)
             options_text.triggered.connect(lambda checked, t=property_type: 
                                            self._add_new_row(
-                                                property_key=f"{t.capitalize().replace('_', ' ')} {self.current_row_id}",
+                                                property_key=f"{t.capitalize().replace('_', ' ')}",
                                                 property_type=t, 
                                                 property_value=f"{t.capitalize().replace('_', ' ')} for {self.current_row_id}"))
             options_menu.addAction(options_text)  
@@ -437,27 +464,19 @@ class CustomPropertyWidget(QWidget):
         else:
             print(f"Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
 
-    # Value change in CustomRowWidget
-    def value_changed(self, row_id: int, new_key: str, new_type: str, new_value: str):
-        """
-        Handles value change requests from CustomRowWidget.
-        Updates the corresponding property value in the config manager.
-        """  
-        self._save_template()  
-    
-    
-
-    def duplicate_row_with_content(self, row_id: int, new_key: str, new_type: str, new_value: str):
-        """
-        Duplicates a row with its content.
-        Creates a new CustomRowWidget with the same properties as the original.
-        """ 
-
-    def duplicate_row(self, row_id: int, new_key: str, new_type: str, new_value: str):
+    def duplicate_row_no_content(self, row_id: int, property_key: str, property_type: str):
         """
         Duplicates a row without content.
         Creates a new CustomRowWidget with the same properties as the original.
         """
-        print(f"Duplicating row {row_id} with key '{new_key}' and type '{new_type}'")
-        # CANNOT USE _ADD_NEW_ROW
-        # self._add_new_row(property_key=new_key, property_type=new_type, property_value=new_value)
+        print(f"Duplicating row without content {row_id} with key '{property_key}' and id '{property_type}'.") 
+        self._add_new_row(property_key=property_key, property_type=property_type, property_value="", position=row_id)
+
+
+    def duplicate_row_with_content(self, row_id: int, property_key: str, property_type: str, new_value: str):
+        """
+        Duplicates a row with its content.
+        Creates a new CustomRowWidget with the same properties as the original.
+        """ 
+        print(f"Duplicating row {row_id} with key '{property_key}' and type '{property_type}'") 
+        self._add_new_row(property_key=property_key, property_type=property_type, property_value=new_value, position=row_id)

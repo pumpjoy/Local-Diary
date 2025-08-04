@@ -46,13 +46,19 @@ class CustomPropertyWidget(QWidget):
 
         self._connect_signals()
         self._load_initial_rows_from_config() 
+        self.update_updown_button_states()
 
     def _setup_edit_ui(self):
         """
         Template editing UI setup.
         This is used when the widget is in edit mode. (Customize Diary Property)
         """
-        # Header section for custom property page
+        # Main Layout
+        page_mainv_layout = QVBoxLayout(self)
+        page_mainv_layout.setContentsMargins(15, 15, 15, 15)
+        page_mainv_layout.setSpacing(0)
+
+        ### Header 1: Header and Back button
         page_header_h_layout = QHBoxLayout() 
         self.main_label = QLabel("Customize Diary Property")
         self.main_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter) 
@@ -60,7 +66,7 @@ class CustomPropertyWidget(QWidget):
         page_header_h_layout.addWidget(self.main_label, 1)
         page_header_h_layout.addWidget(self.back_button)
 
-        # --- Header grid content ---
+        ### Header 2: Title and Date
         self.title_label = QLabel("Title") # TODO: Add StyleSheet 
         self.title_edit = QLineEdit()
         self.date_label = QLabel("Date") 
@@ -73,50 +79,9 @@ class CustomPropertyWidget(QWidget):
         self.title_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         self.date_label.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         
-        # --- Custom Grid Row Content --- 
-        # Dictionary to store CustomRowWidget instances, mapped by unique row_id
-        self.dict_row_widgets = {}
-        self.current_row_id = 0 # Counter for generating unique row_ids # Follows row position
-        
-        grid_scroll_area = QScrollArea()
-        grid_scroll_area.setWidgetResizable(True)
-        grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        
-        # Make Content Grid scrollable
-        view_scroll_content_widget = QWidget()
-        view_scroll_content_layout = QVBoxLayout(view_scroll_content_widget)
-        view_scroll_content_layout.setContentsMargins(10, 10, 10, 10)
-        view_scroll_content_layout.setSpacing(10)
-
-        # Actual Grid content
-        self.content_grid = QGridLayout(self)
-        self.content_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.content_grid.setContentsMargins(0, 0, 0, 0)
-        self.content_grid.setSpacing(10)
-
-        view_scroll_content_layout.addLayout(self.content_grid)
-        view_scroll_content_layout.addStretch(1) 
-
-        grid_scroll_area.setWidget(view_scroll_content_widget)
-        
-        # Special Button that mildly resembles Notion database' property system
-        # Reference to "Add New" button widget
-        # Will always be at the very bottom of grid
-        self.add_new_button_widget = None
-        self._add_new_row_button()
-
-        # After initial setup, update state of Up/Down buttons
-        self.update_updown_button_states()
- 
-        # --- End ---
-        page_mainv_layout = QVBoxLayout(self)
-        page_mainv_layout.setContentsMargins(15, 15, 15, 15)
-        page_mainv_layout.setSpacing(0)
-        
         # Header Grid
         # Initialized early to take into consideration of dynamic buttons' shenanigans
-        self.header_grid = QGridLayout()
+        self.header_grid = QGridLayout(self)
         self.header_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.header_grid.setContentsMargins(0, 0, 0, 0)
         self.header_grid.setSpacing(10)
@@ -126,13 +91,42 @@ class CustomPropertyWidget(QWidget):
         self.header_grid.addWidget(self.date_label, 1, 0)
         self.header_grid.addWidget(self.date_edit, 1, 1)
 
-        # Main Layout filling
-        page_mainv_layout.addLayout(page_header_h_layout) 
-        page_mainv_layout.addSpacing(10)
-        page_mainv_layout.addLayout(self.header_grid)
-        page_mainv_layout.addSpacing(10)
-        page_mainv_layout.addWidget(grid_scroll_area, 1)
+        ### --- Custom Grid Row Content --- 
+        self.grid_scroll_area = QScrollArea(self)
+        self.grid_scroll_area.setWidgetResizable(True)
+        self.grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Make Content Grid scrollable
+        self.view_scroll_content_widget = QWidget(self.grid_scroll_area)
+        self.view_scroll_content_layout = QVBoxLayout(self.view_scroll_content_widget)
+        self.view_scroll_content_layout.setContentsMargins(10, 10, 10, 10)
+        self.view_scroll_content_layout.setSpacing(10)
+
+        # Actual Grid content
+        self.content_grid = QGridLayout()
+        # self.content_grid.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.content_grid.setContentsMargins(0, 0, 0, 0)
+        self.content_grid.setSpacing(10)
+
+        self.view_scroll_content_layout.addLayout(self.content_grid)
+        self.view_scroll_content_layout.addStretch(1) 
+
+        self.grid_scroll_area.setWidget(self.view_scroll_content_widget)
+         
+
+        ### Main Layout filling
+        page_mainv_layout.addLayout(page_header_h_layout)  
+        page_mainv_layout.addLayout(self.header_grid) 
+        page_mainv_layout.addWidget(self.grid_scroll_area, 1)
         page_mainv_layout.stretch(1)
+
+        # Dictionary to store CustomRowWidget instances, mapped by unique row_id
+        self.dict_row_widgets = {}
+        self.current_row_id = 0 # Counter for generating unique row_ids # Follows row position
+        self.add_new_button_widget = None
+        self._add_new_row_button()
+        
 
     def _setup_view_ui(self, date, diary_manager):
         """
@@ -467,4 +461,3 @@ class CustomPropertyWidget(QWidget):
         print(f"Duplicating row {row_id} with key '{new_key}' and type '{new_type}'")
         # CANNOT USE _ADD_NEW_ROW
         # self._add_new_row(property_key=new_key, property_type=new_type, property_value=new_value)
-

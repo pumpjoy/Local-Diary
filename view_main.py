@@ -96,7 +96,7 @@ class MyWindow(QWidget):
         self.stacked_widget.addWidget(self.main_page_widget)
         self.stacked_widget.addWidget(self.settings_page_widget)
         self.stacked_widget.addWidget(self.custom_property_page_widget)
-        self.stacked_widget.addWidget(self.custom_property_page_view_widget)
+        # self.stacked_widget.addWidget(self.custom_property_page_view_widget)
         
 
         main_layout = QVBoxLayout(self)

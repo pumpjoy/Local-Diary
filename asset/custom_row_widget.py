@@ -78,7 +78,7 @@ class CustomRowWidget(QWidget):
         # Widget for Text, Number:
         self.text_line_edit = QLineEdit()
         # self.text_line_edit.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.text_line_edit.setFixedHeight(10)
+        # self.text_line_edit.setFixedHeight(10)
         self.text_line_edit.setText(self.property_value_content)
         self.text_line_edit.textChanged.connect(self._handle_text_line_changed)
         self.content_stack.addWidget(self.text_line_edit)

@@ -18,7 +18,7 @@ from asset.custom_row_widget import CustomRowWidget
 
 from asset.css_cheatsheet import (
     MAIN_LABEL_LIGHT_QSS, MAIN_LABEL_DARK_QSS,
-    
+    BT_BACK_TO_MAIN_SIZE,
     TYPES_OF_PROPERTIES 
 )
 
@@ -56,15 +56,16 @@ class CustomPropertyWidget(QWidget):
         # Main Layout
         page_mainv_layout = QVBoxLayout(self)
         page_mainv_layout.setContentsMargins(15, 15, 15, 15)
-        page_mainv_layout.setSpacing(0)
+        page_mainv_layout.setSpacing(5)
 
         ### Header 1: Header and Back button
         page_header_h_layout = QHBoxLayout() 
         self.main_label = QLabel("Customize Diary Property")
         self.main_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter) 
-        self.back_button = QPushButton("Back to Main")
+        self.bt_back_to_main = QPushButton("Back to Main")
+        self.bt_back_to_main.setFixedSize(*BT_BACK_TO_MAIN_SIZE)
         page_header_h_layout.addWidget(self.main_label, 1)
-        page_header_h_layout.addWidget(self.back_button)
+        page_header_h_layout.addWidget(self.bt_back_to_main)
 
         ### Header 2: Title and Date
         self.title_label = QLabel("Title") # TODO: Add StyleSheet 
@@ -153,9 +154,9 @@ class CustomPropertyWidget(QWidget):
 
 
     def _connect_signals(self):
-        self.back_button.clicked.connect(self._on_back_button_clicked)  
+        self.bt_back_to_main.clicked.connect(self._on_bt_back_to_main_clicked)  
 
-    def _on_back_button_clicked(self):
+    def _on_bt_back_to_main_clicked(self):
         self._save_template()
         self.back_to_main_requested.emit()
     
@@ -194,9 +195,7 @@ class CustomPropertyWidget(QWidget):
         """
         loaded_template_data = self.diary_manager.get_setting('dynamic_rows', [])
         
-        self._clear_all_rows()
-        
-        self.next_row_id = 0 
+        self._clear_all_rows() 
 
         if loaded_template_data:
             print(f"Loading {len(loaded_template_data)} dynamic rows (template) from config.")
@@ -280,12 +279,12 @@ class CustomPropertyWidget(QWidget):
         self.dict_row_widgets[row_id] = custom_row_widget
         
         # Connect custom signals from CustomRowWidget to slots in main window
-        custom_row_widget.move_up_requested.connect(self.move_row_up)
-        custom_row_widget.move_down_requested.connect(self.move_row_down) 
-        custom_row_widget.delete_requested.connect(self.delete_row) 
-        custom_row_widget.value_changed_requested.connect(lambda: self._save_template()) 
-        custom_row_widget.duplicate_no_content_requested.connect(self.duplicate_row_no_content)
-        custom_row_widget.duplicate_with_content_requested.connect(self.duplicate_row_with_content)
+        custom_row_widget.requested_move_up.connect(self.move_row_up)
+        custom_row_widget.requested_move_down.connect(self.move_row_down) 
+        custom_row_widget.requested_delete.connect(self.delete_row) 
+        custom_row_widget.requested_value_changed.connect(lambda: self._save_template()) 
+        custom_row_widget.requested_duplicate_no_content.connect(self.duplicate_row_no_content)
+        custom_row_widget.requested_duplicate_with_content.connect(self.duplicate_row_with_content)
 
         
         current_order = self._get_current_order() 

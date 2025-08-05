@@ -19,12 +19,12 @@ class CustomRowWidget(QWidget):
     TODO: image asset for `Up`, `Down` and `Delete` instead of Unicode and Emoji.
     It emits signals when its Up/Down buttons are clicked.
     """
-    move_up_requested = pyqtSignal(int)    # Signal: emitted when 'Up' button is clicked (passes row_id)
-    move_down_requested = pyqtSignal(int)  # Signal: emitted when 'Down' button is clicked (passes row_id)
-    delete_requested = pyqtSignal(int)    # Signal: emitted when 'Delete' button is clicked (passes row_id)
-    value_changed_requested = pyqtSignal(int, str, str, str)  # Signal: emitted when value is changed (passes row_id and 3 new values)
-    duplicate_no_content_requested =  pyqtSignal(int, str, str) # Signal: duplicate row without content
-    duplicate_with_content_requested =  pyqtSignal(int, str, str, str) # Signal: duplicate row with content
+    requested_move_up = pyqtSignal(int)    # Signal: emitted when 'Up' button is clicked (passes row_id)
+    requested_move_down = pyqtSignal(int)  # Signal: emitted when 'Down' button is clicked (passes row_id)
+    requested_delete = pyqtSignal(int)    # Signal: emitted when 'Delete' button is clicked (passes row_id)
+    requested_value_changed = pyqtSignal(int, str, str, str)  # Signal: emitted when value is changed (passes row_id and 3 new values)
+    requested_duplicate_no_content =  pyqtSignal(int, str, str) # Signal: duplicate row without content
+    requested_duplicate_with_content =  pyqtSignal(int, str, str, str) # Signal: duplicate row with content
 
 
     def __init__(self, row_id: int, 
@@ -48,12 +48,12 @@ class CustomRowWidget(QWidget):
         # Create 'Up' button
         self.up_button = QPushButton("▲") # Placeholder for button
         self.up_button.setFixedSize(30, 25) 
-        self.up_button.clicked.connect(lambda: self.move_up_requested.emit(self.row_id))
+        self.up_button.clicked.connect(lambda: self.requested_move_up.emit(self.row_id))
 
         # Create 'Down' button
         self.down_button = QPushButton("▼") # Placeholder for button
         self.down_button.setFixedSize(30, 25)   
-        self.down_button.clicked.connect(lambda: self.move_down_requested.emit(self.row_id))
+        self.down_button.clicked.connect(lambda: self.requested_move_down.emit(self.row_id))
 
         # Create Property Key Tool button
         self.property_key = QToolButton()
@@ -149,7 +149,7 @@ class CustomRowWidget(QWidget):
         Renames the property key.
         """
         self.property_key.setText(new_key)
-        self.value_changed_requested.emit(
+        self.requested_value_changed.emit(
             self.row_id, self.property_key.text(), self.property_type, self.property_value)
  
     def _create_properties_common_menu_options(self):
@@ -182,13 +182,13 @@ class CustomRowWidget(QWidget):
         options_visibility.triggered.connect(lambda: print(f"Property Visibility in row {self.row_id} clicked!"))
 
         options_duplicate_no_content = QAction("Duplicate without Content Property", self)
-        options_duplicate_no_content.triggered.connect(lambda: self.duplicate_no_content_requested.emit(self.row_id, self.property_key.text(), self.property_type))
+        options_duplicate_no_content.triggered.connect(lambda: self.requested_duplicate_no_content.emit(self.row_id, self.property_key.text(), self.property_type))
         
         options_duplicate_with_content = QAction("Duplicate with Content Property", self)
-        options_duplicate_with_content.triggered.connect(lambda: self.duplicate_with_content_requested.emit(self.row_id, self.property_key.text(), self.property_type, self.property_value))
+        options_duplicate_with_content.triggered.connect(lambda: self.requested_duplicate_with_content.emit(self.row_id, self.property_key.text(), self.property_type, self.property_value))
         
         options_delete = QAction("Delete Property", self)
-        options_delete.triggered.connect(lambda: self.delete_requested.emit(self.row_id))
+        options_delete.triggered.connect(lambda: self.requested_delete.emit(self.row_id))
 
         return name_line_edit, property_label, menu_change_type, options_visibility, options_duplicate_no_content, options_duplicate_with_content, options_delete
 
@@ -437,7 +437,7 @@ class CustomRowWidget(QWidget):
         
         self.property_key.setMenu(menu2)
         
-        self.value_changed_requested.emit(
+        self.requested_value_changed.emit(
             self.row_id, self.property_key.text(), self.property_type, self.property_value)
 
     def _update_widgets(self):

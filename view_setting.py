@@ -8,8 +8,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction
 
 from asset.css_cheatsheet import (
+    WINDOW_MARGIN,
     MAIN_LABEL_LIGHT_QSS, MAIN_LABEL_DARK_QSS, 
-    SETTINGS_PAGE_LIGHT_QSS, SETTINGS_PAGE_DARK_QSS,
+    BT_BACK_TO_MAIN_SIZE,
+    GLOBAL_LIGHT_QSS, GLOBAL_DARK_QSS,
 )
 
 
@@ -27,17 +29,19 @@ class SettingsPageWidget(QWidget):
 
     def _setup_ui(self):
         settings_page_v_layout = QVBoxLayout(self)
-        settings_page_v_layout.setContentsMargins(15, 15, 15, 15)
-        settings_page_v_layout.setSpacing(0)
+        settings_page_v_layout.setContentsMargins(*WINDOW_MARGIN)
+        settings_page_v_layout.setSpacing(5)
 
         # Header section for the settings page
         settings_header_h_layout = QHBoxLayout()
         self.main_label = QLabel("Settings")
         self.main_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.main_label.setStyleSheet("background-color: #ADD8E6; font-weight: bold; padding: 5px;")
-        self.back_button = QPushButton("Back to Main")
+        current_theme = self.config_manager.get_setting('appearance.theme', 'dark')
+        self.main_label.setStyleSheet(MAIN_LABEL_DARK_QSS if current_theme == 'dark' else MAIN_LABEL_LIGHT_QSS)
+        self.bt_back_to_main = QPushButton("Back to Main")
+        self.bt_back_to_main.setFixedSize(*BT_BACK_TO_MAIN_SIZE)
         settings_header_h_layout.addWidget(self.main_label, 1)
-        settings_header_h_layout.addWidget(self.back_button)
+        settings_header_h_layout.addWidget(self.bt_back_to_main)
 
         # --- Content ---
         # Theme Setting
@@ -61,9 +65,9 @@ class SettingsPageWidget(QWidget):
 
     def _connect_signals(self):
         """Connects signals specific to this settings page."""
-        self.back_button.clicked.connect(self._on_back_button_clicked) 
+        self.bt_back_to_main.clicked.connect(self._on_bt_back_to_main_clicked) 
 
-    def _on_back_button_clicked(self):
+    def _on_bt_back_to_main_clicked(self):
         self._save_settings_from_ui()
         self.back_to_main_requested.emit()
 
@@ -89,8 +93,8 @@ class SettingsPageWidget(QWidget):
         Called by the main window.
         """
         if theme_name == 'light':
-            self.setStyleSheet(SETTINGS_PAGE_LIGHT_QSS)
+            self.setStyleSheet(GLOBAL_LIGHT_QSS)
             self.main_label.setStyleSheet(MAIN_LABEL_LIGHT_QSS)  
         else: # dark theme
-            self.setStyleSheet(SETTINGS_PAGE_DARK_QSS) 
+            self.setStyleSheet(GLOBAL_DARK_QSS) 
             self.main_label.setStyleSheet(MAIN_LABEL_DARK_QSS)  

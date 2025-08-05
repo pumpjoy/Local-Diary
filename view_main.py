@@ -23,11 +23,10 @@ from helper.diary_property_manager import DiaryPropertyConfiguration
 from view_setting import SettingsPageWidget
 
 from asset.css_cheatsheet import (
-    GLOBAL_DARK_QSS, GLOBAL_LIGHT_QSS,
+    GLOBAL_DARK_QSS, GLOBAL_LIGHT_QSS, WINDOW_MARGIN,
     MAIN_LABEL_DARK_QSS, MAIN_LABEL_LIGHT_QSS, 
-    MAIN_CALENDAR_DAY_CELL_LIGHT, MAIN_CALENDAR_DAY_CELL_DARK,
-    MAIN_CALENDAR_TODAY_CELL_LIGHT, MAIN_CALENDAR_TODAY_CELL_DARK,
-    MAIN_CALENDAR_DATE_NOT_THIS_MONTH_LIGHT, MAIN_CALENDAR_DATE_NOT_THIS_MONTH_DARK,
+    MAIN_PAGE_WIDGETS_SIZE,
+    MAIN_CALENDAR_CELL_CSS,
 )
 from asset.custom_cal_cell import CalendarCellWidget, CalendarHeaderWidget
 from view_custom_property import CustomPropertyWidget
@@ -132,26 +131,25 @@ class MyWindow(QWidget):
         # Mixed _setup_ui and _create_widgets from before
         
         self.bt_setting = QPushButton("\u22EE")
-        self.bt_setting.setFixedSize(30, 30)
+        self.bt_setting.setFixedSize(*MAIN_PAGE_WIDGETS_SIZE.BT_SETTING)
         self.bt_setting.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         
         # --- Widgets for Horizontal Layout 1 (Header Month) ---
         this_date = self.app_config.get_setting('current_month', datetime.datetime.now())
         this_date = datetime.datetime.fromisoformat(this_date)
         self.main_label = QLabel(this_date.strftime('%B %Y'))
-        
         self.main_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
-        self.main_label.setContentsMargins(0,0,0,0)
+        self.main_label.setContentsMargins(5,5,5,5)
         self.main_label.setWordWrap(True)
 
         self.bt_month_last = QPushButton("<")
-        self.bt_month_last.setFixedSize(30, 30)
+        self.bt_month_last.setFixedSize(*MAIN_PAGE_WIDGETS_SIZE.BT_MONTH_LAST)
         self.bt_month_last.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.bt_today = QPushButton("Today")
-        self.bt_today.setFixedSize(80, 30)
+        self.bt_today.setFixedSize(*MAIN_PAGE_WIDGETS_SIZE.BT_MONTH_TODAY)
         self.bt_today.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.bt_month_next = QPushButton(">")
-        self.bt_month_next.setFixedSize(30, 30)
+        self.bt_month_next.setFixedSize(*MAIN_PAGE_WIDGETS_SIZE.BT_MONTH_NEXT)
         self.bt_month_next.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         # --- Horizontal Layout 1: Header Month ---
@@ -170,7 +168,7 @@ class MyWindow(QWidget):
         # --- Widgets for Horizontal Layout 2 (Custom Diary Property) ---
 
         self.bt_custom_property = QPushButton("Customize \nProperty")
-        self.bt_custom_property.setFixedSize(80, 40)
+        self.bt_custom_property.setFixedSize(*MAIN_PAGE_WIDGETS_SIZE.BT_CUSTOM_PROPERTY)
         self.bt_custom_property.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         row_h_custom_property = QHBoxLayout()
@@ -188,9 +186,10 @@ class MyWindow(QWidget):
         view_content_calendar_month.setSpacing(0)
         
         # Initiate a list to hold references to calendar widgets
-        self.calendar_widgets_reference = {}
+        self.calendar_widgets_reference = {} 
         for row in range(self.cal_month_num_rows):
             layout_h_dates = QHBoxLayout()
+            
             layout_h_dates.setContentsMargins(0, 0, 0, 0)
             layout_h_dates.setSpacing(0)
 
@@ -205,18 +204,28 @@ class MyWindow(QWidget):
             this_month = generate_month_dates(this_date, self.first_day_is_monday) # Get current month  
             current_theme = self.app_config.get_setting('appearance.theme', 'dark')
             
-            for col in range(self.cal_month_num_cols):
+            for col in range(self.cal_month_num_cols): 
                 if row == 0:
                     # Day header cells
-                    cell_widget = CalendarHeaderWidget(f"{days[col]}") 
+                    horizontal_policy = QSizePolicy.Policy.Expanding
+                    cell_widget = CalendarHeaderWidget(f"{days[col]}", horizontal_policy=horizontal_policy) 
+                    # This always gets called first, width of row=0 is always used by CellWidget
+                    # widthis = 100
+                    widthis = cell_widget.get_width()
+                    print(f"Row is 0 {widthis}")
                 else:  
+                    print(f"-------Row NOT 0 {widthis}")
                     # Date cells
-                    cell_widget = CalendarCellWidget(dateis=f"{this_month[(row - 1) * self.cal_month_num_cols + col].day}", full_date=this_date) 
-                
+                    dateis = this_month[(row - 1) * self.cal_month_num_cols + col]
+                    dayis = f"{dateis.day}" 
+                    cell_widget = CalendarCellWidget(self.diary_config, widthis, dateis=f"{dayis}", full_date=dateis) 
+                    # Ask to update height of all cell_widgets in this row
+
+
                 self.calendar_widgets_reference[(row, col)] = cell_widget  # Store reference for later use
 
                 combined_style = (
-                    (MAIN_CALENDAR_DAY_CELL_LIGHT if current_theme == 'light' else MAIN_CALENDAR_DAY_CELL_DARK) 
+                    (MAIN_CALENDAR_CELL_CSS.DAY_LIGHT if current_theme == 'light' else MAIN_CALENDAR_CELL_CSS.DAY_DARK) 
                 )
                 cell_widget.setStyleSheet(combined_style)
 
@@ -227,24 +236,25 @@ class MyWindow(QWidget):
                     cell_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.MinimumExpanding)
                 
                 
-                layout_h_dates.addWidget(cell_widget, 1)
+                layout_h_dates.addWidget(cell_widget, stretch=1) 
 
             view_content_calendar_month.addLayout(layout_h_dates)
         view_content_calendar_month.addStretch(1)
 
         # Allow Calendar Month view to be scrollable
-        view_scroll_calendar_month = QWidget()
-        view_scroll_calendar_month.setLayout(view_content_calendar_month)
+        view_scroll_calendar_month = QWidget() 
+        view_scroll_calendar_month.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        view_scroll_calendar_month.setLayout(view_content_calendar_month) 
         grid_scroll_area = QScrollArea()
-        grid_scroll_area.setWidgetResizable(True)
+        grid_scroll_area.setWidgetResizable(True)  
         grid_scroll_area.setWidget(view_scroll_calendar_month)
-        grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         
         # --- Main Window View ---
         main_window = QWidget()
         main_window_view = QVBoxLayout(main_window)
-        main_window_view.setContentsMargins(14, 14, 14, 36) # left, top, right, bottom
+        main_window_view.setContentsMargins(*WINDOW_MARGIN) # left, top, right, bottom
         main_window_view.addWidget(self.bt_setting, 0, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)
         main_window_view.addLayout(row_h_mon) 
         main_window_view.addLayout(row_h_custom_property)
@@ -370,23 +380,27 @@ class MyWindow(QWidget):
                     cell_date = this_month[idx] 
                     
                     current_theme = self.app_config.get_setting('appearance.theme', 'dark') 
-                    style = MAIN_CALENDAR_DAY_CELL_LIGHT if current_theme == 'light' else MAIN_CALENDAR_DAY_CELL_DARK      
+                    style = MAIN_CALENDAR_CELL_CSS.DAY_LIGHT if current_theme == 'light' else MAIN_CALENDAR_CELL_CSS.DAY_DARK      
 
                     cell_widget.cus_set_text(str(cell_date.day))
                     cell_widget.setStyleSheet(style)
 
                     # Check if this cell is within the current month
                     if cell_date.month != this_date.month: 
-                        cell_widget.setStyleSheet(MAIN_CALENDAR_DATE_NOT_THIS_MONTH_LIGHT if current_theme == "light" else MAIN_CALENDAR_DATE_NOT_THIS_MONTH_DARK) 
+                        cell_widget.setStyleSheet(MAIN_CALENDAR_CELL_CSS.NOT_THIS_MONTH_LIGHT if current_theme == "light" else MAIN_CALENDAR_CELL_CSS.NOT_THIS_MONTH_DARK) 
                     
                     # Check if this cell is today, highlight if yes
                     if cell_date == today: 
                         if hasattr(cell_widget, "set_today"):
                             cell_widget.set_today(True)   
-                            cell_widget.setStyleSheet(MAIN_CALENDAR_TODAY_CELL_LIGHT if current_theme == "light" else MAIN_CALENDAR_TODAY_CELL_DARK )
+                            cell_widget.setStyleSheet(MAIN_CALENDAR_CELL_CSS.TODAY_LIGHT if current_theme == "light" else MAIN_CALENDAR_CELL_CSS.TODAY_DARK)
                     else:
                         if hasattr(cell_widget, "set_today"):
                             cell_widget.set_today(False)
+    
+    def _refresh_this_cell_(row, col):
+
+        pass
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

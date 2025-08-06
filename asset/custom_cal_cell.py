@@ -147,9 +147,9 @@ class CalendarCellWidget(QWidget):
     def _render_entry(self):
         print("Rendering entry............")
         entry_path = self.diary_config.change_mode(edit_mode=False, date=self.full_date)
+        self.diary_config.load_config() 
         if os.path.isfile(entry_path): 
-            print(f"Entry for {self.full_date} found.") 
-            
+            print(f"Entry for {self.full_date} found.")  
             title = self.diary_config.get_setting('title', [])
             date = self.diary_config.get_setting('date', []) # TODO: fill this date automatically #TODO: date changes name of file! make sure to add index!
             load_data = self.diary_config.get_setting('dynamic_rows', [])
@@ -157,6 +157,7 @@ class CalendarCellWidget(QWidget):
             self.next_row_id = 0
 
             if load_data:
+                print(f"CalendarCellWidget: load_data - {load_data}")
                 # Render by property_type
                 for row_data in load_data:
                     property_key = row_data.get(f"property_key", "Loaded Item")
@@ -166,7 +167,7 @@ class CalendarCellWidget(QWidget):
                         property_key=property_key, property_type=property_type,property_value=property_value)
                     self.v_property_render.addWidget(label)
             else:
-                print("No dynamic rows (template) found in config. Starting with an empty template.")
+                print("CalendarCellWidget: No dynamic rows (template) found in config. Starting with an empty template.")
 
             # Render individual based on property_type
             # for row_data in 
@@ -180,24 +181,19 @@ class CalendarCellWidget(QWidget):
 
         match property_type:
             case "text" | "number":
-                label.setText(property_value)
-                print(property_type)
+                label.setText(property_value) 
                 return label 
             case "select":
-                label.setText(property_value)
-                print(property_type)
+                label.setText(property_value) 
                 return label 
             case "multi_select":
-                label.setText(property_value)
-                print(property_type)
+                label.setText(property_value) 
                 return label 
             case "status":
-                label.setText(property_value)
-                print(property_type)
+                label.setText(property_value) 
                 return label 
             case "checkbox":
-                label.setText(property_value)
-                print(property_type)
+                label.setText(property_value) 
                 return label 
 
 class CalendarHeaderWidget(QWidget):

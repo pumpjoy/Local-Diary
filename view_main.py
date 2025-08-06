@@ -211,10 +211,8 @@ class MyWindow(QWidget):
                     cell_widget = CalendarHeaderWidget(f"{days[col]}", horizontal_policy=horizontal_policy) 
                     # This always gets called first, width of row=0 is always used by CellWidget
                     # widthis = 100
-                    widthis = cell_widget.get_width()
-                    print(f"Row is 0 {widthis}")
-                else:  
-                    print(f"-------Row NOT 0 {widthis}")
+                    widthis = cell_widget.get_width() 
+                else:
                     # Date cells
                     dateis = this_month[(row - 1) * self.cal_month_num_cols + col]
                     dayis = f"{dateis.day}" 
@@ -248,8 +246,8 @@ class MyWindow(QWidget):
         grid_scroll_area = QScrollArea()
         grid_scroll_area.setWidgetResizable(True)  
         grid_scroll_area.setWidget(view_scroll_calendar_month)
-        grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-        grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        grid_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        grid_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
         # --- Main Window View ---
         main_window = QWidget()

@@ -40,6 +40,8 @@ class CustomPropertyWidget(QWidget):
         super().__init__(parent)
         self.config_manager = config_manager # For theme 
         self.diary_manager = diary_manager # Store reference to diary manager
+        self.diary_manager.change_mode(edit_mode=True)
+        self.diary_manager.load_config()
         self.date = date # Date to view entries for, if in view mode
         self.edit_mode = edit_mode # Whether in edit template mode 
         self._setup_edit_ui()
@@ -183,10 +185,10 @@ class CustomPropertyWidget(QWidget):
 
         try:
             self.diary_manager.save_config()
-            print(f"Template saved successfully to {self.diary_manager.config_file_path}")
+            print(f"CustomPropertyWidget: Template saved successfully to {self.diary_manager.config_file_path}")
         except Exception as e:
-            print(f"Error saving template: {e}")
-            print(f"Failed to save template to {self.diary_manager.config_file_path}")  
+            print(f"CustomPropertyWidget: Error saving template: {e}")
+            print(f"CustomPropertyWidget: Failed to save template to {self.diary_manager.config_file_path}")  
 
     def _load_initial_rows_from_config(self):
         """
@@ -198,14 +200,14 @@ class CustomPropertyWidget(QWidget):
         self._clear_all_rows() 
 
         if loaded_template_data:
-            print(f"Loading {len(loaded_template_data)} dynamic rows (template) from config.")
+            print(f"CustomPropertyWidget: Loading {len(loaded_template_data)} dynamic rows (template) from config.")
             for row_data in loaded_template_data:
                 property_key = row_data.get(f"property_key", "Loaded Item")
                 property_type = row_data.get("property_type", "text")
                 property_value = row_data.get("property_value", "No Data Loaded")
                 self._add_new_row(property_key, property_type, property_value)
         else:
-            print("No dynamic rows (template) found in config. Starting with an empty template.")
+            print("CustomPropertyWidget: No dynamic rows (template) found in config. Starting with an empty template.")
             self._rebuild_layout_from_order([])
 
         self.update_updown_button_states()
@@ -398,7 +400,7 @@ class CustomPropertyWidget(QWidget):
             self._save_template()
         except ValueError:
             # This should ideally not happen if row_id_to_move is valid
-            print(f"Error: Row with ID {row_id_to_move} not found in current order.")
+            print(f"CustomPropertyWidget: Error: Row with ID {row_id_to_move} not found in current order.")
         
         self.update_updown_button_states() # Update button states after move
 
@@ -418,7 +420,7 @@ class CustomPropertyWidget(QWidget):
                 self._rebuild_layout_from_order(current_order_ids)
             self._save_template()
         except ValueError: 
-            print(f"Error: Row with ID {row_id_to_move} not found in current order.")
+            print(f"CustomPropertyWidget: Error: Row with ID {row_id_to_move} not found in current order.")
             
         self.update_updown_button_states() # Update button states after move
 
@@ -428,7 +430,7 @@ class CustomPropertyWidget(QWidget):
         """
         widget_to_delete = self.dict_row_widgets.get(row_id_to_delete)
         if not widget_to_delete:
-            print(f"Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
+            print(f"CustomPropertyWidget: Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
             return
         
         reply = QMessageBox.question(
@@ -448,7 +450,7 @@ class CustomPropertyWidget(QWidget):
             try:
                 current_order_ids.remove(row_id_to_delete)
             except ValueError:
-                print(f"Error: Row with ID {row_id_to_delete} not found for deletion after confirmation.")
+                print(f"CustomPropertyWidget: Error: Row with ID {row_id_to_delete} not found for deletion after confirmation.")
                 return
 
             self.dict_row_widgets.pop(row_id_to_delete, None)
@@ -457,14 +459,14 @@ class CustomPropertyWidget(QWidget):
             self.update_updown_button_states() # Update button states for remaining rows
             self._save_template()
         else:
-            print(f"Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
+            print(f"CustomPropertyWidget: Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
 
     def duplicate_row_no_content(self, row_id: int, property_key: str, property_type: str):
         """
         Duplicates a row without content.
         Creates a new CustomRowWidget with the same properties as the original.
         """
-        print(f"Duplicating row without content {row_id} with key '{property_key}' and id '{property_type}'.") 
+        print(f"CustomPropertyWidget: Duplicating row without content {row_id} with key '{property_key}' and id '{property_type}'.") 
         self._add_new_row(property_key=property_key, property_type=property_type, property_value="", position=row_id)
 
 
@@ -473,5 +475,5 @@ class CustomPropertyWidget(QWidget):
         Duplicates a row with its content.
         Creates a new CustomRowWidget with the same properties as the original.
         """ 
-        print(f"Duplicating row {row_id} with key '{property_key}' and type '{property_type}'") 
+        print(f"CustomPropertyWidget: Duplicating row {row_id} with key '{property_key}' and type '{property_type}'") 
         self._add_new_row(property_key=property_key, property_type=property_type, property_value=new_value, position=row_id)

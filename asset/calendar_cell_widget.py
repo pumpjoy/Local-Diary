@@ -6,25 +6,32 @@ from PyQt6.QtWidgets import (
     QGroupBox, QVBoxLayout, QHBoxLayout,
     QWidget, QLabel, QPushButton,
 ) 
-from PyQt6.QtCore import Qt, QSize
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from asset.css_cheatsheet import(
     MAIN_PAGE_CAL_HEAD_MARGIN,
 )
 
 class CalendarCellWidget(QWidget):
- 
-    def __init__(self, diary_config, widthis, dateis="", full_date:datetime=None, is_today=False, *args, **kwargs):
+    
+    # Signals to main's stacked widget to display CustomPropertyWidget 
+    requested_view_entry = pyqtSignal(str)
+    
+
+    def __init__(self, diary_manager, widthis, dateis="", full_date:datetime=None, is_today=False, *args, **kwargs):
         super().__init__(*args, **kwargs)  
-        self.diary_config = diary_config  
-        self.full_date=full_date.strftime('%Y-%m-%d')  
+        self.diary_manager = diary_manager  
+        self.full_date=full_date.strftime('%Y-%m-%d')
+
+        self.entry_path = self.diary_manager.change_mode(edit_mode=False, date=self.full_date)
+            
+
         self.is_today = is_today 
         self.date_label_margin = 4
         self.bt_add_new_entry_margin = 4
 
         self.setMinimumWidth(widthis)
         self.setSizePolicy(self.sizePolicy().horizontalPolicy(), QSizePolicy.Policy.Minimum)
-
 
         self.parent_layout = QVBoxLayout(self)
         self.parent_layout.setContentsMargins(0, 0, 0, 0)
@@ -45,21 +52,27 @@ class CalendarCellWidget(QWidget):
         self.bt_add_new_entry = QPushButton('+') # Placeholder for button  
         self.bt_add_new_entry.setToolTip("Add new entry")
         self.bt_add_new_entry.setCursor(Qt.CursorShape.CrossCursor)
-        self.bt_add_new_entry.setFixedSize(30, 30) 
+        self.bt_add_new_entry.setFixedSize(30, 30)
         self.bt_add_new_entry.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.bt_add_new_entry.setStyleSheet(f"margin: {self.bt_add_new_entry_margin}px;")
         self.bt_add_new_entry.clicked.connect(self._add_new_entry)
         
         self.date_label = QLabel(text=dateis) 
         self.date_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight)   
+        self.date_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)  
         self.date_label.setStyleSheet(f"border: 1px solid transparent; background: transparent; margin: {self.date_label_margin}px;")
-
 
         header_h_layout.addWidget(self.bt_add_new_entry)
         header_h_layout.addStretch(1)
         header_h_layout.addWidget(self.date_label) 
         
-        
+
+        self.title_label = QLabel()
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.title_label.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)  
+        self.title_label.setStyleSheet(f"border: 1px solid transparent; background: transparent; margin: {self.date_label_margin}px;")
+
+
         # --- Display the properties for this date --- 
         # Temporary, will just show their stats
         self.v_property_render = QVBoxLayout()
@@ -72,6 +85,7 @@ class CalendarCellWidget(QWidget):
 
         # --- End ---
         self.content_layout.addLayout(header_h_layout)   
+        self.content_layout.addWidget(self.title_label)
         self.content_layout.addLayout(self.v_property_render)  
         self.content_layout.addStretch(1)
  
@@ -85,7 +99,6 @@ class CalendarCellWidget(QWidget):
 
     def today_style(self, style):
         self.date_label.setStyleSheet(style)
-  
 
     def _add_new_entry(self):
         from PyQt6.QtWidgets import QMessageBox
@@ -97,16 +110,19 @@ class CalendarCellWidget(QWidget):
             Adds new entry date.json based on template. 
             Has built in duplication checks.
             Ensures existing data must never get overwritten."""
-            template_path = self.diary_config.change_mode(edit_mode=True) 
-            entry_path = self.diary_config.change_mode(edit_mode=False, date=self.full_date)
+            template_path = self.diary_manager.change_mode(edit_mode=True)
+            self.entry_path = self.diary_manager.change_mode(edit_mode=False, date=self.full_date) 
+            # self.entry_path = self.diary_manager.change_mode(edit_mode=False, date=self.full_date)
             # Check if file name exists
-            if os.path.isfile(entry_path):
+            if os.path.isfile(self.entry_path):
                 print("File path exists.")
+                print(f"Template path: {template_path}")
+                print(f"Entry path: {self.entry_path}")
                 # Check if has (1) behind it; check if it already has a copy
-                entry_path = Path(entry_path)
-                dir_path = entry_path.parent
-                file_stem = entry_path.stem # entry_2025-08-05
-                file_suffix = entry_path.suffix # .json
+                self.entry_path = Path(self.entry_path)
+                dir_path = self.entry_path.parent
+                file_stem = self.entry_path.stem # entry_2025-08-05
+                file_suffix = self.entry_path.suffix # .json
 
                 glob_pattern = f"{file_stem}*{file_suffix}"
                 number_pattern = re.compile(r"\((?P<number>\d+)\)")
@@ -132,27 +148,27 @@ class CalendarCellWidget(QWidget):
                     max_number = max(existing_numbers)
                     next_number = max_number + 1
 
-                entry_path = f"{file_stem}({next_number}){file_suffix}"
-                entry_path = dir_path / entry_path
+                self.entry_path = f"{file_stem}({next_number}){file_suffix}"
+                self.entry_path = dir_path / self.entry_path
 
 
             """else: create a new file as per default"""
-            shutil.copy(template_path, entry_path)
-            # QMessageBox.information(None, "Success", f"Template successfully copied and renamed to {entry_path}")
+            shutil.copy(template_path, self.entry_path)
+            # QMessageBox.information(None, "Success", f"Template successfully copied and renamed to {self.entry_path}")
             self._render_entry()
         except Exception as e:
             print(f"An error occurred: {str(e)}")
             QMessageBox.critical(None, "Error", f"An error occurred: {str(e)}")
 
     def _render_entry(self):
-        print("Rendering entry............")
-        entry_path = self.diary_config.change_mode(edit_mode=False, date=self.full_date)
-        self.diary_config.load_config() 
-        if os.path.isfile(entry_path): 
-            print(f"Entry for {self.full_date} found.")  
-            title = self.diary_config.get_setting('title', [])
-            date = self.diary_config.get_setting('date', []) # TODO: fill this date automatically #TODO: date changes name of file! make sure to add index!
-            load_data = self.diary_config.get_setting('dynamic_rows', [])
+        print("CalendarCellWidget: Rendering entry............")
+        self.diary_manager.load_config() 
+        if os.path.isfile(self.entry_path): 
+            print(f"CalendarCellWidget: Entry for {self.full_date} found.")   
+            title = self.diary_manager.get_setting('title', [])
+            # Literally don't need date, what am I doing.
+            # date = self.diary_manager.get_setting('date', []) # TODO: fill this date automatically #TODO: date changes name of file! make sure to add index!
+            load_data = self.diary_manager.get_setting('dynamic_rows', [])
             
             self.next_row_id = 0
 
@@ -195,6 +211,27 @@ class CalendarCellWidget(QWidget):
             case "checkbox":
                 label.setText(property_value) 
                 return label 
+
+    def mousePressEvent(self, event):
+        """When pressed, display CustomPropertyWidget in edit mode"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            print("CalendarCellWidget: Widget is pressed")
+
+            
+            # Check if there is entry in this date
+            # if not, just create one 
+            print(self.entry_path)
+            # Check if file name exists
+            if os.path.isfile(self.entry_path):
+                print("File path exists.")
+                print(self.full_date)
+                self.requested_view_entry.emit(self.full_date)
+            else:
+                print("CalendarCellWidget: No entry found for this date")
+
+
+        return super().mousePressEvent(event)
+    
 
 class CalendarHeaderWidget(QWidget):
     # FUTURE: Stays a widget until further actions

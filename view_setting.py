@@ -17,7 +17,7 @@ from asset.css_cheatsheet import (
 
 class SettingsPageWidget(QWidget):
     # Signals emitted by this widget for the parent to react to
-    back_to_main_requested = pyqtSignal()
+    requested_back_to_main = pyqtSignal()
     settings_saved = pyqtSignal() # Emitted after settings are saved to config_manager
 
     def __init__(self, config_manager, parent=None):
@@ -69,7 +69,7 @@ class SettingsPageWidget(QWidget):
 
     def _on_bt_back_to_main_clicked(self):
         self._save_settings_from_ui()
-        self.back_to_main_requested.emit()
+        self.requested_back_to_main.emit()
 
     def load_settings_into_ui(self):
         """Loads settings from the config manager into the UI widgets."""

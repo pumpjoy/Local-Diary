@@ -28,7 +28,7 @@ from asset.css_cheatsheet import (
     MAIN_PAGE_WIDGETS_SIZE,
     MAIN_CALENDAR_CELL_CSS,
 )
-from asset.custom_cal_cell import CalendarCellWidget, CalendarHeaderWidget
+from asset.calendar_cell_widget import CalendarCellWidget, CalendarHeaderWidget
 from view_custom_property import CustomPropertyWidget
 from view_custom_property_view import CustomPropertyViewWidget
 
@@ -108,14 +108,13 @@ class MyWindow(QWidget):
         # --- Setting related signals ---
         self.bt_setting.clicked.connect(self._show_settings_page)
         # Connect signals from the separate SettingsPageWidget instance
-        self.settings_page_widget.back_to_main_requested.connect(self._show_main_page)
+        self.settings_page_widget.requested_back_to_main.connect(self._show_main_page)
         self.settings_page_widget.settings_saved.connect(self._handle_settings_saved_from_settings_page)
 
         # --- Custom Property related signals --- 
         self.bt_custom_property.clicked.connect(self._show_custom_property_page)
         # Connect signals from the separate SettingsPageWidget instance
-        self.custom_property_page_widget.back_to_main_requested.connect(self._show_main_page) 
-
+        self.custom_property_page_widget.reqeusted_back_to_main.connect(self._show_main_page) 
 
         # --- Local - Calendar month navigation signals ---
         self.bt_month_last.clicked.connect(lambda: self._update_calendar_cells(mode="prev"))
@@ -214,9 +213,10 @@ class MyWindow(QWidget):
                     widthis = cell_widget.get_width() 
                 else:
                     # Date cells
-                    dateis = this_month[(row - 1) * self.cal_month_num_cols + col]
-                    dayis = f"{dateis.day}" 
-                    cell_widget = CalendarCellWidget(self.diary_config, widthis, dateis=f"{dayis}", full_date=dateis) 
+                    full_date = this_month[(row - 1) * self.cal_month_num_cols + col]
+                    dayis = f"{full_date.day}" 
+                    cell_widget = CalendarCellWidget(self.diary_config, widthis, dateis=f"{dayis}", full_date=full_date) 
+                    cell_widget.requested_view_entry.connect(lambda _, a=full_date: self._calendar_cell_clicked(full_date=a))
                     # Ask to update height of all cell_widgets in this row
 
 
@@ -279,13 +279,29 @@ class MyWindow(QWidget):
         self.stacked_widget.setCurrentIndex(self.settings_page_index)
         self.setWindowTitle("Application Settings")
 
-    def _show_custom_property_page(self):
-        """Switches the QStackedWidget to display the custom property page."""
+    def _show_custom_property_page(self, entry_mode=False, date=None):
+        """
+        Switches the QStackedWidget to display the custom property page.
+        @param: entry_mode (bool) Primarily called by CalendarCellWidget when it is clicked and has entry (at that date).
+        @param: date (str) Follow up parameter, to tell CustomPropertyWidget to display the entry based on the date. 
+        """
         # Tell custom property page to load fresh data from config before showing it
-        self.diary_config.change_mode(edit_mode=True)  # Switch to edit mode
-        self.custom_property_page_widget.load_edit_mode_into_ui() 
-        self.stacked_widget.setCurrentIndex(self.custom_diary_property_index)
-        self.setWindowTitle("Custom Property Settings")
+        if entry_mode: 
+            print("Entry Mode")  
+            self.custom_property_page_widget.load_view_mode_into_ui(date=date)
+            self.stacked_widget.setCurrentIndex(self.custom_diary_property_index) 
+        else:
+            print("Template Mode")
+            self.custom_property_page_widget.load_edit_mode_into_ui()
+            self.stacked_widget.setCurrentIndex(self.custom_diary_property_index) 
+
+    def _calendar_cell_clicked(self, full_date: str):
+        """
+        Getting requested_view_entry signals from Calendar Cell.
+        Changes view (stacked widget) to view CustomPropertyWidget(entry_mode=True)
+        """
+        print("Main: Received signal from CalendarCell. Request to view entry using CustomPropertyWidget")
+        self._show_custom_property_page(entry_mode=True, date=full_date)
 
     # --- Methods to react to settings changes ---
     def _handle_settings_saved_from_settings_page(self):
@@ -298,7 +314,6 @@ class MyWindow(QWidget):
         self._update_calendar_cells()
     
     # --- Other Application Logic --- 
-    
     def _on_bt_today_clicked(self):
         """Updates the main label with the current time."""
         current_time = datetime.datetime.now().date()

@@ -25,7 +25,7 @@ from asset.css_cheatsheet import (
 # --- Custom Property Widget ---
 class CustomPropertyWidget(QWidget):
     """ Actually a view"""
-    back_to_main_requested = pyqtSignal()
+    reqeusted_back_to_main = pyqtSignal()
     settings_saved = pyqtSignal() # Emitted after settings are saved to diary_manager
 
     def __init__(self, config_manager, diary_manager, parent=None, edit_mode=False, date=None):
@@ -38,16 +38,17 @@ class CustomPropertyWidget(QWidget):
         @param date: Date to view entries for, if in view mode.
         """
         super().__init__(parent)
-        self.config_manager = config_manager # For theme 
-        self.diary_manager = diary_manager # Store reference to diary manager
-        self.diary_manager.change_mode(edit_mode=True)
-        self.diary_manager.load_config()
         self.date = date # Date to view entries for, if in view mode
+
+        self.config_manager = config_manager # For theme 
+        self.diary_manager = diary_manager # Store reference to diary manager 
         self.edit_mode = edit_mode # Whether in edit template mode 
+
         self._setup_edit_ui()
+        
+        self.load_edit_mode_into_ui() 
 
         self._connect_signals()
-        self._load_initial_rows_from_config() 
         self.update_updown_button_states()
 
     def _setup_edit_ui(self):
@@ -62,7 +63,7 @@ class CustomPropertyWidget(QWidget):
 
         ### Header 1: Header and Back button
         page_header_h_layout = QHBoxLayout() 
-        self.main_label = QLabel("Customize Diary Property")
+        self.main_label = QLabel()
         self.main_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter) 
         self.bt_back_to_main = QPushButton("Back to Main")
         self.bt_back_to_main.setFixedSize(*BT_BACK_TO_MAIN_SIZE)
@@ -116,7 +117,7 @@ class CustomPropertyWidget(QWidget):
         self.view_scroll_content_layout.addStretch(1) 
 
         self.grid_scroll_area.setWidget(self.view_scroll_content_widget)
-         
+        
 
         ### Main Layout filling
         page_mainv_layout.addLayout(page_header_h_layout)  
@@ -129,30 +130,32 @@ class CustomPropertyWidget(QWidget):
         self.current_row_id = 0 # Counter for generating unique row_ids # Follows row position
         self.add_new_button_widget = None
         self._add_new_row_button()
-        
-
-    def _setup_view_ui(self, date, diary_manager):
-        """
-        View entry by date UI setup.
-        This is used when the widget is not in edit mode.
-        """
-
     
     def load_edit_mode_into_ui(self):
         """
         Loads current diary property settings into the UI widgets.
         This is called when the widget is displayed.
-        """
+        """ 
+        self.edit_mode = True
+        self.diary_manager.change_mode(self.edit_mode) 
+        self.diary_manager.load_config()
+        self.main_label.setText("Customize Diary Property")
         self.title_edit.setText(self.diary_manager.get_setting('title', ''))
         self.date_edit.setDate(QDate.fromString(self.diary_manager.get_setting('date', ''), "dd/MM/yyyy"))
-
-    def load_view_mode_into_ui(self):
+        self._load_custom_row()
+        
+    def load_view_mode_into_ui(self, date=None):
         """
         Loads current diary property settings into the UI widgets.
         This is called when the widget is displayed.
         """
+        self.edit_mode = False
+        self.diary_manager.change_mode(edit_mode=self.edit_mode, date=date)
+        self.diary_manager.load_config()
+        self.main_label.setText(f"Viewing Entry for {date}")
         self.title_edit.setText(self.diary_manager.get_setting('title', ''))
         self.date_edit.setDate(QDate.fromString(self.diary_manager.get_setting('date', ''), "dd/MM/yyyy"))
+        self._load_custom_row()
 
 
     def _connect_signals(self):
@@ -160,7 +163,7 @@ class CustomPropertyWidget(QWidget):
 
     def _on_bt_back_to_main_clicked(self):
         self._save_template()
-        self.back_to_main_requested.emit()
+        self.reqeusted_back_to_main.emit()
     
     # --- Load and Save Template Logics ---
     def _save_template(self):
@@ -181,7 +184,10 @@ class CustomPropertyWidget(QWidget):
                 }
                 data_to_save.append(row_data)
         
+        
         self.diary_manager.set_setting('dynamic_rows', data_to_save)
+        
+
 
         try:
             self.diary_manager.save_config()
@@ -190,7 +196,15 @@ class CustomPropertyWidget(QWidget):
             print(f"CustomPropertyWidget: Error saving template: {e}")
             print(f"CustomPropertyWidget: Failed to save template to {self.diary_manager.config_file_path}")  
 
-    def _load_initial_rows_from_config(self):
+    def _clear_all_rows(self):
+        """Helper to clear all DraggableRowWidgets from the grid."""
+        current_order_ids = self._get_current_order()
+        for row_id in current_order_ids:
+            widget = self.dict_row_widgets.pop(row_id, None)
+            if widget:
+                widget.deleteLater()
+
+    def _load_custom_row(self):
         """
         Loads the dynamic row data (the template) from the config manager
         and populates the grid. Called once on application startup.
@@ -211,14 +225,6 @@ class CustomPropertyWidget(QWidget):
             self._rebuild_layout_from_order([])
 
         self.update_updown_button_states()
-
-    def _clear_all_rows(self):
-        """Helper to clear all DraggableRowWidgets from the grid."""
-        current_order_ids = self._get_current_order()
-        for row_id in current_order_ids:
-            widget = self.dict_row_widgets.pop(row_id, None)
-            if widget:
-                widget.deleteLater()
 
     def _rebuild_layout_from_order(self, new_order_ids: list[int]):
         """

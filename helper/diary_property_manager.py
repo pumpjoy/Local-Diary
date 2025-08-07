@@ -48,8 +48,13 @@ class DiaryPropertyConfiguration:
         data_dir = os.path.join(config_dir, "data")
         data_dir = os.path.join(data_dir, year)
         if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
+            os.makedirs(data_dir) 
         return data_dir
+
+    def get_diary_config_path(self):
+        path = self._get_config_directory()
+        path = os.path.join(path, "diary_property.json")
+        return path
     
     def change_mode(self, edit_mode: bool, date=None):
         """
@@ -63,8 +68,9 @@ class DiaryPropertyConfiguration:
             self.config_file_path = os.path.join(self.config_dir, "diary_property.json")
         else:
             if date is None:
-                raise ValueError("Date must be set when not in edit mode.")
+                raise ValueError("DiaryPropertyConfiguration: Date must be set when not in edit mode.")
             self.config_dir = self.get_data_directory(date[:4])
+            print(self.config_dir)
             self.config_file_path = os.path.join(self.config_dir, f"entry_{date}.json")
         
         self._ensure_config_directory_exists()
@@ -76,7 +82,7 @@ class DiaryPropertyConfiguration:
         Creates the configuration directory if it doesn't already exist.
         """
         if not QDir().mkpath(self.config_dir):
-            print(f"Warning: Could not create config directory: {self.config_dir}")
+            print(f"DiaryPropertyConfiguration: Warning: Could not create config directory: {self.config_dir}")
 
     def load_config(self):
         """
@@ -87,20 +93,20 @@ class DiaryPropertyConfiguration:
             try:
                 with open(self.config_file_path, 'r', encoding='utf-8') as f:
                     self.config_data = json.load(f)
-                print(f"Configuration loaded from: {self.config_file_path}")
+                print(f"DiaryPropertyConfiguration: Configuration loaded from: {self.config_file_path}")
             except json.JSONDecodeError as e:
                 # Handle cases where the JSON file is malformed
-                print(f"Error loading config file (JSON decode error): {e}")
+                print(f"DiaryPropertyConfiguration: Error: Error loading config file (JSON decode error): {e}")
                 print("Initializing with default settings.")
                 self.config_data = self._get_default_config()
             except Exception as e:
                 # Handle other potential file I/O errors (e.g., permission issues)
-                print(f"Error loading config file: {e}")
+                print(f"DiaryPropertyConfiguration: Error: Error loading config file: {e}")
                 print("Initializing with default settings.")
                 self.config_data = self._get_default_config()
         else:
             # File doesn't exist, so initialize with defaults
-            print(f"Config file not found: {self.config_file_path}. Initializing with default settings.")
+            print(f"DiaryPropertyConfiguration: Config file not found: {self.config_file_path}. Initializing with default settings.")
             self.config_data = self._get_default_config()
 
     def save_config(self):
@@ -110,11 +116,11 @@ class DiaryPropertyConfiguration:
         try:
             with open(self.config_file_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config_data, f, indent=4) # Use indent for human-readability
-            print(f"Configuration saved to: {self.config_file_path}")
+            print(f"DiaryPropertyConfiguration: Configuration saved to: {self.config_file_path}")
             return True # Success
         except Exception as e:
             # Handle potential file I/O errors during saving
-            print(f"Error saving config file: {e}")
+            print(f"DiaryPropertyConfiguration: Error saving config file: {e}")
             return False # Failed
 
     def get_setting(self, key, default_value=None):

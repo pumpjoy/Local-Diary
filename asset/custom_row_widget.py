@@ -19,21 +19,25 @@ class CustomRowWidget(QWidget):
     TODO: image asset for `Up`, `Down` and `Delete` instead of Unicode and Emoji.
     It emits signals when its Up/Down buttons are clicked.
     """
-    requested_move_up = pyqtSignal(int)    # Signal: emitted when 'Up' button is clicked (passes row_id)
-    requested_move_down = pyqtSignal(int)  # Signal: emitted when 'Down' button is clicked (passes row_id)
-    requested_delete = pyqtSignal(int)    # Signal: emitted when 'Delete' button is clicked (passes row_id)
-    requested_value_changed = pyqtSignal(int, str, str, str)  # Signal: emitted when value is changed (passes row_id and 3 new values)
+    requested_move_up = pyqtSignal(int)    # Signal: emitted when 'Up' button is clicked (passes property_id)
+    requested_move_down = pyqtSignal(int)  # Signal: emitted when 'Down' button is clicked (passes property_id)
+    requested_delete = pyqtSignal(int)    # Signal: emitted when 'Delete' button is clicked (passes property_id)
+    requested_value_changed = pyqtSignal(int, str, str, str)  # Signal: emitted when value is changed (passes property_id and 3 new values)
     requested_duplicate_no_content =  pyqtSignal(int, str, str) # Signal: duplicate row without content
     requested_duplicate_with_content =  pyqtSignal(int, str, str, str) # Signal: duplicate row with content
 
 
-    def __init__(self, row_id: int, 
-                 property_key_content: str, property_type: str, property_value: str = "",
+    def __init__(self, property_id: int,  
+                 property_key_content: str, 
+                 property_type: str, 
+                 property_value: str = "",
                  types_of_properties: list[str]=None,
-                 parent=None):
+                 parent=None,
+                 row_id: int = None):
         super().__init__(parent)
 
-        self.row_id = row_id
+        self.property_id = property_id # Unique identifier
+        self.row_id = row_id # Positional
         self.property_key_content = property_key_content
         self.property_type = property_type 
         self.property_value = property_value
@@ -150,7 +154,7 @@ class CustomRowWidget(QWidget):
         """
         self.property_key.setText(new_key)
         self.requested_value_changed.emit(
-            self.row_id, self.property_key.text(), self.property_type, self.property_value)
+            self.property_id, self.property_key.text(), self.property_type, self.property_value)
  
     def _create_properties_common_menu_options(self):
         """
@@ -179,13 +183,15 @@ class CustomRowWidget(QWidget):
         
         ### Other options
         options_visibility = QAction("Property Visibility", self)
-        options_visibility.triggered.connect(lambda: print(f"Property Visibility in row {self.row_id} clicked!"))
+        options_visibility.triggered.connect(lambda: print(f"Property Visibility in row {self.property_id} clicked!"))
 
         options_duplicate_no_content = QAction("Duplicate without Content Property", self)
-        options_duplicate_no_content.triggered.connect(lambda: self.requested_duplicate_no_content.emit(self.row_id, self.property_key.text(), self.property_type))
+        options_duplicate_no_content.triggered.connect(lambda: self.requested_duplicate_no_content.emit(
+            self.row_id, self.property_key.text(), self.property_type))
         
         options_duplicate_with_content = QAction("Duplicate with Content Property", self)
-        options_duplicate_with_content.triggered.connect(lambda: self.requested_duplicate_with_content.emit(self.row_id, self.property_key.text(), self.property_type, self.property_value))
+        options_duplicate_with_content.triggered.connect(lambda: self.requested_duplicate_with_content.emit(
+            self.row_id, self.property_key.text(), self.property_type, self.property_value))
         
         options_delete = QAction("Delete Property", self)
         options_delete.triggered.connect(lambda: self.requested_delete.emit(self.row_id))
@@ -438,7 +444,7 @@ class CustomRowWidget(QWidget):
         self.property_key.setMenu(menu2)
         
         self.requested_value_changed.emit(
-            self.row_id, self.property_key.text(), self.property_type, self.property_value)
+            self.property_id, self.property_key.text(), self.property_type, self.property_value)
 
     def _update_widgets(self):
         if self.property_type == "text":

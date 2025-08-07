@@ -179,8 +179,12 @@ class MyWindow(QWidget):
         # to get the visuals I want 
 
         self.first_day_is_monday = not self.app_config.get_setting('settings_page.first_day_is_sunday', True)
-
-        view_content_calendar_month = QVBoxLayout() 
+        
+        # Allow Calendar Month view to be scrollable
+        view_scroll_calendar_month = QWidget() 
+        view_scroll_calendar_month.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        
+        view_content_calendar_month = QVBoxLayout(view_scroll_calendar_month) 
         view_content_calendar_month.setContentsMargins(0, 0, 0, 0)
         view_content_calendar_month.setSpacing(0)
         
@@ -239,10 +243,7 @@ class MyWindow(QWidget):
             view_content_calendar_month.addLayout(layout_h_dates)
         view_content_calendar_month.addStretch(1)
 
-        # Allow Calendar Month view to be scrollable
-        view_scroll_calendar_month = QWidget() 
-        view_scroll_calendar_month.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        view_scroll_calendar_month.setLayout(view_content_calendar_month) 
+        # view_scroll_calendar_month.setLayout(view_content_calendar_month)  
         grid_scroll_area = QScrollArea()
         grid_scroll_area.setWidgetResizable(True)  
         grid_scroll_area.setWidget(view_scroll_calendar_month)
@@ -258,8 +259,7 @@ class MyWindow(QWidget):
         main_window_view.addLayout(row_h_custom_property)
         main_window_view.addSpacing(5)
         main_window_view.addWidget(grid_scroll_area, 1)
-        
-        # self.setLayout(main_window_view)
+
         return main_window
 
 

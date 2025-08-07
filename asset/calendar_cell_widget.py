@@ -154,6 +154,11 @@ class CalendarCellWidget(QWidget):
 
             """else: create a new file as per default"""
             shutil.copy(template_path, self.entry_path)
+
+            # Add date into .json's date
+            self.diary_manager.set_setting('date', self.full_date)
+            self.diary_manager.save_config()
+
             # QMessageBox.information(None, "Success", f"Template successfully copied and renamed to {self.entry_path}")
             self._render_entry()
         except Exception as e:
@@ -165,11 +170,13 @@ class CalendarCellWidget(QWidget):
         self.diary_manager.load_config() 
         if os.path.isfile(self.entry_path): 
             print(f"CalendarCellWidget: Entry for {self.full_date} found.")   
+            # Clear widget
+            self._clear_all_widgets()
             title = self.diary_manager.get_setting('title', [])
             # Literally don't need date, what am I doing.
             # date = self.diary_manager.get_setting('date', []) # TODO: fill this date automatically #TODO: date changes name of file! make sure to add index!
             load_data = self.diary_manager.get_setting('dynamic_rows', [])
-            
+            print(load_data)
             self.next_row_id = 0
 
             if load_data:
@@ -211,6 +218,15 @@ class CalendarCellWidget(QWidget):
             case "checkbox":
                 label.setText(property_value) 
                 return label 
+            
+    def _clear_all_widgets(self):
+        """Clears all widget from self.v_property_render."""
+        while self.v_property_render.count():
+            item = self.v_property_render.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.setParent(None)
+                widget.deleteLater()
 
     def mousePressEvent(self, event):
         """When pressed, display CustomPropertyWidget in edit mode"""

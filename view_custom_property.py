@@ -5,7 +5,9 @@
 # TODO: Will be reused to view individual day content
 
 import os
-import glob
+import datetime
+import ast
+import json
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -24,6 +26,8 @@ from asset.css_cheatsheet import (
     BT_BACK_TO_MAIN_SIZE,
     TYPES_OF_PROPERTIES 
 )
+
+from helper.diary_property_manager import DiaryPropertyConfiguration
 
 # --- Custom Property Widget ---
 class CustomPropertyWidget(QWidget):
@@ -48,9 +52,7 @@ class CustomPropertyWidget(QWidget):
         self.edit_mode = edit_mode # Whether in edit template mode 
 
         self._setup_edit_ui()
-        
-        self.load_edit_mode_into_ui() 
-
+         
         self._connect_signals()
         self.update_updown_button_states()
 
@@ -139,6 +141,9 @@ class CustomPropertyWidget(QWidget):
         Loads current diary property settings into the UI widgets.
         This is called when the widget is displayed.
         """ 
+        print("CUSTOMPROPERTYWIDGET: LOAD EDIT MODE")
+        self.date = None
+        self.current_row_id  = 0
         self.edit_mode = True
         self.diary_manager.change_mode(self.edit_mode) 
         self.diary_manager.load_config()
@@ -152,6 +157,9 @@ class CustomPropertyWidget(QWidget):
         Loads current diary property settings into the UI widgets.
         This is called when the widget is displayed.
         """
+        print("CUSTOMPROPERTYWIDGET: LOAD VIEW MODE")
+        self.date = date
+        self.current_row_id  = 0
         self.edit_mode = False
         self.diary_manager.change_mode(edit_mode=self.edit_mode, date=date)
         self.diary_manager.load_config()
@@ -166,6 +174,7 @@ class CustomPropertyWidget(QWidget):
 
     def _on_bt_back_to_main_clicked(self):
         self._save_template()
+        self._sync_entries()
         self.reqeusted_back_to_main.emit()
     
     # --- Load and Save Template Logics ---
@@ -174,6 +183,7 @@ class CustomPropertyWidget(QWidget):
         Gathers data from all dynamic rows and saves it as the JSON template
         using the ConfigManager.
         """
+        # Actually saving
         data_to_save = []
         ordered_ids = self._get_current_order()
 
@@ -181,6 +191,7 @@ class CustomPropertyWidget(QWidget):
             widget = self.dict_row_widgets.get(row_id)
             if widget:
                 row_data = {
+                    "property_id": widget.property_id,
                     "property_key": widget.property_key.text(),
                     "property_type": widget.property_type,
                     "property_value": widget.property_value
@@ -189,25 +200,136 @@ class CustomPropertyWidget(QWidget):
         
         self.diary_manager.set_setting('dynamic_rows', data_to_save)
         try:
-            self.diary_manager.save_config()
-            self._save_entry_files() # NEW: TEST THIS
-            print(f"CustomPropertyWidget: Template saved successfully to {self.diary_manager.config_file_path}")
+            self.diary_manager.save_config() 
+            # Synchronize the change to template and all entries in this year 
+            self._sync_entries()
+            # print(f"CustomPropertyWidget: Template saved successfully to {self.diary_manager.config_file_path}")
         except Exception as e:
             print(f"CustomPropertyWidget: Error saving template: {e}")
             print(f"CustomPropertyWidget: Failed to save template to {self.diary_manager.config_file_path}")  
 
-    def _sync_entries(self, row_id: int):
+    def _sync_entries(self):
         """
         Synchronizes the entries and template. 
         Note: This only affects entries of THIS YEAR.
         This assumes all checks are done individually by respective functions (delete, change, etc)
         and its job is only to synchronize.
-        """
-        # 
-        dir_path = self.diary_manager._get_config_directory()
+        This is a standalone function meant to do exactly as that.
+        """ 
 
-        files = glob.glob(os.path.join(dir_path, ))
-        pass
+        # 0. Template will check first, if current is template, skip template sync codes
+        # 1. Get current widget setup, store the dynamic_row as list;
+        # 2. Get files that is not this file, get their list set up.
+        # 3. Check the differences by property_id, property_key and property_type
+        # 4. Get the difference ones, make changes accordingly (add, delete, move, change type)
+        def sync_rows(source_list, target_list, id_key='property_id', type_key = 'property_type'):
+            """
+            Synchronizes a target list to match a source list based on a unique ID.
+            Handles additions, deletions, updates, and reordering.
+            @param: source_list (list) The list of dictionaries that is the source of truth.
+            @param: target_list (list) The list of dictionaries to be synchronized.
+            @param: id_key, type_key (str) The key that holds the unique identifier. 
+            @returns: A new list that is fully synchronized with the source list.
+            """
+            # Create a dictionary for fast lookups of items in the target list
+            target_map = {item[id_key]: item for item in target_list if id_key in item}
+            synchronized_list = []
+    
+            # Iterate through the source list to build the new synchronized list
+            for source_item in source_list:
+                # If item exists in source's id
+                # Changes has been done to the property id (that exists)
+                if id_key in source_item:
+                    source_id = source_item[id_key]
+
+                    # If source id exists in target's id 
+                    # This effectively handles `delete_row` actions
+                    if source_id in target_map: 
+                        target_item = target_map[source_id]
+
+                        # Check if the property_type is the same
+                        if source_item.get(type_key) == target_item.get(type_key):
+                            # Type unchanged, preserve target's value, change key_key
+                            merged_item = source_item.copy()
+                            merged_item['property_value'] = target_item.get('property_value')
+                            synchronized_list.append(merged_item)
+                        else:
+                            # Type has changed, we use source item
+                            # Reminder: The moment type changes, the value is cleared anyway
+                            synchronized_list.append(source_item)
+                    else: 
+                        # This is a new item, add directly from source
+                        # This handles `add_new_row`
+                        synchronized_list.append(source_item)
+
+            # The whole thing handles movement changes in row 
+            return synchronized_list
+
+        def actually_syncing(entry, edit_mode=False):
+            try:
+                with open(entry, 'r+', encoding='utf-8') as f:
+                    entry_data = json.load(f) 
+                    entry_rows = entry_data.get('dynamic_rows', [])  
+
+                    # 3. Check the differences by property_id, property_key and property_type
+                    entry_date = entry_data.get('date', "")
+                    print(f"ENTRY DATE IS {entry_date}")
+                    temp_manager = DiaryPropertyConfiguration()
+                    if edit_mode:
+                        temp_manager.change_mode(edit_mode=True)
+                    else:
+                        temp_manager.change_mode(edit_mode=edit_mode, date=entry_date)
+                    temp_manager.load_config()
+                    updated_rows = sync_rows(current_rows, entry_rows)
+                    temp_manager.set_setting('dynamic_rows', updated_rows)
+                    temp_manager.save_config()
+
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                print(f"CustomPropertyWidget: Error getting current file config: {e}")
+
+        # 1. Get current widget setup, store the dynamic_row as list; 
+        # This will act as source for others to match
+        current_rows = self.diary_manager.get_setting('dynamic_rows', [])   
+        
+        if self.edit_mode == True:
+            print("CUSTOMPROPERTYWIDGET: SYNC: Template Mode")
+            # 0. Template will check first, if current is template, skip template sync codes
+            # --- Sync to entries --- 
+            # Skip template sync codes, go straight to sync-ing entries    
+            # 2. Get files that is not this file, get their list set up.
+            # Reminder: CHANGE ONLY THIS YEAR!
+            
+            data_dir = self.diary_manager.get_data_directory(str(datetime.datetime.today().year))
+            list_entries = [entry for entry in os.listdir(data_dir)] 
+            for entry in list_entries:
+                # Because diary_manager.change mode requires known date, and we don't know others' dates
+                # Instantly use json.load here  
+                entry = os.path.join(data_dir, entry)  
+                actually_syncing(entry)
+        else: 
+            print("CUSTOMPROPERTYWIDGET: SYNC: Entry Mode")
+            # Not template mode
+            # Entries have changes
+            # --- Sync to template ---
+            entry = self.diary_manager.get_diary_config_path()
+            actually_syncing(entry, edit_mode=True)
+            # Change back to current diary_manager 😥
+            
+            # --- Sync to other entries ---
+            data_dir = self.diary_manager.get_data_directory(str(datetime.datetime.today().year))
+            list_entries = [entry for entry in os.listdir(data_dir)] 
+            for entry in list_entries:
+                # Because diary_manager.change mode requires known date, and we don't know others' dates
+                # Instantly use json.load here
+                
+                # Check if entry is self, skip if yes
+                print(f"self.date: {self.date}, entry: {entry}")
+                if self.date in entry:
+                    print("SAME ENTRY SAME ENTRY")
+                    continue
+                entry = os.path.join(data_dir, entry)  
+                actually_syncing(entry)
+ 
 
     def _clear_all_rows(self):
         """Helper to clear all DraggableRowWidgets from the grid."""
@@ -229,10 +351,11 @@ class CustomPropertyWidget(QWidget):
         if loaded_template_data:
             print(f"CustomPropertyWidget: Loading {len(loaded_template_data)} dynamic rows (template) from config.")
             for row_data in loaded_template_data:
-                property_key = row_data.get(f"property_key", "Loaded Item")
+                property_id = row_data.get("property_id", None)
+                property_key = row_data.get("property_key", "Loaded Item")
                 property_type = row_data.get("property_type", "text")
                 property_value = row_data.get("property_value", "No Data Loaded")
-                self._add_new_row(property_key, property_type, property_value)
+                self._add_new_row(property_id, property_key, property_type, property_value)
         else:
             print("CustomPropertyWidget: No dynamic rows (template) found in config. Starting with an empty template.")
             self._rebuild_layout_from_order([])
@@ -265,8 +388,12 @@ class CustomPropertyWidget(QWidget):
         if self.add_new_button_widget:
             self.content_grid.addWidget(self.add_new_button_widget, current_grid_row, 0, 1, self.content_grid.columnCount())
         
+        # Prematurely return if only has Add_New
+        # Stops it from saving nonsense template (more specifically, final date.json that is empty)
+        if self.content_grid.count() == 1: 
+            return 
+
         # Request layout to update itself to reflect changes
-        
         self._save_template()
         self.content_grid.update()
 
@@ -282,7 +409,11 @@ class CustomPropertyWidget(QWidget):
 
     # --- Dynamic action logic ---     
     def _add_new_row(self,  
-                     property_key: str, property_type: str, property_value: str = "", position: int = None):
+                     property_id: str, 
+                     property_key: str, 
+                     property_type: str, 
+                     property_value: str = "", 
+                     position: int = None):
         """
         Creates a new CustomRowWidget and adds it to grid.
         This method is called when user clicks "Add New" button.
@@ -292,12 +423,25 @@ class CustomPropertyWidget(QWidget):
         """  
         # Changed to follow row position
         row_id = self.current_row_id 
-        self.current_row_id += 1
+
+        while row_id in self.dict_row_widgets:
+            row_id += 1
+        self.current_row_id = row_id + 1
+        # self.current_row_id += 1
+
+        # Use row_id as property_id for new rows
+        if property_id is None:
+            property_id = row_id
 
         # Create CustomRowWidget instance
-        custom_row_widget = CustomRowWidget(row_id, property_key, property_type, property_value,  
-                                            types_of_properties=TYPES_OF_PROPERTIES, 
-                                            parent=self)
+        custom_row_widget = CustomRowWidget(
+            property_id=property_id, 
+            property_key_content=property_key, 
+            property_type=property_type, 
+            property_value=property_value,  
+            types_of_properties=TYPES_OF_PROPERTIES, 
+            parent=self,
+            row_id = row_id)
         # Store widget in dictionary for easy lookup by ID
         self.dict_row_widgets[row_id] = custom_row_widget
         
@@ -355,6 +499,7 @@ class CustomPropertyWidget(QWidget):
             # not its value at the time of creation. (Hence final value of TYPES_OF_PROPERTIES)
             options_text.triggered.connect(lambda checked, t=property_type: 
                                            self._add_new_row(
+                                                property_id=None,
                                                 property_key=f"{t.capitalize().replace('_', ' ')}",
                                                 property_type=t, 
                                                 property_value=f"{t.capitalize().replace('_', ' ')} for {self.current_row_id}"))
@@ -381,7 +526,12 @@ class CustomPropertyWidget(QWidget):
                 widget = item.widget()
                 # If it's a CustomRowWidget, add its row_id to order list
                 if isinstance(widget, CustomRowWidget):
-                    order.append(widget.row_id)
+                    # order.append(widget.property_id)
+                    # Find the row_id for this widget
+                    for row_id, w in self.dict_row_widgets.items():
+                        if w is widget:
+                            order.append(row_id)
+                            break
         return order
     
     
@@ -458,7 +608,7 @@ class CustomPropertyWidget(QWidget):
             self,
             "Confirm Deletion",
             f"Are you sure you want to delete '{widget_to_delete.property_key_content}'?\n"
-            "This action will remove all views.\n"
+            "This action will remove this property in all views.\n"
             "This action cannot be undone.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No # Default button is No
@@ -466,7 +616,7 @@ class CustomPropertyWidget(QWidget):
 
         if reply == QMessageBox.StandardButton.Yes:
             # User confirmed, proceed with deletion
-            # Remove the row_id from logical order list
+            # Remove the row_id from logical order list 
             current_order_ids = self._get_current_order()
             try:
                 current_order_ids.remove(row_id_to_delete)
@@ -478,17 +628,27 @@ class CustomPropertyWidget(QWidget):
             widget_to_delete.deleteLater()
             self._rebuild_layout_from_order(current_order_ids)
             self.update_updown_button_states() # Update button states for remaining rows
+            # Save to current entry json
             self._save_template()
         else:
             print(f"CustomPropertyWidget: Warning: Widget for ID {row_id_to_delete} not found in tracking dictionary.")
 
-    def duplicate_row_no_content(self, row_id: int, property_key: str, property_type: str):
+    def duplicate_row_no_content(
+            self, 
+            row_id: int, 
+            property_key: str, 
+            property_type: str):
         """
         Duplicates a row without content.
         Creates a new CustomRowWidget with the same properties as the original.
         """
-        print(f"CustomPropertyWidget: Duplicating row without content {row_id} with key '{property_key}' and id '{property_type}'.") 
-        self._add_new_row(property_key=property_key, property_type=property_type, property_value="", position=row_id)
+        print(f"CustomPropertyWidget: Duplicating row without content: {row_id} with key '{property_key}' and id '{property_type}'.") 
+        self._add_new_row(
+            property_id=None,
+            property_key=property_key, 
+            property_type=property_type, 
+            property_value="", 
+            position=row_id)
 
 
     def duplicate_row_with_content(self, row_id: int, property_key: str, property_type: str, new_value: str):
@@ -496,5 +656,10 @@ class CustomPropertyWidget(QWidget):
         Duplicates a row with its content.
         Creates a new CustomRowWidget with the same properties as the original.
         """ 
-        print(f"CustomPropertyWidget: Duplicating row {row_id} with key '{property_key}' and type '{property_type}'") 
-        self._add_new_row(property_key=property_key, property_type=property_type, property_value=new_value, position=row_id)
+        print(f"CustomPropertyWidget: Duplicating row: {row_id} with key '{property_key}' and type '{property_type}'") 
+        self._add_new_row(
+            property_id=None, 
+            property_key=property_key, 
+            property_type=property_type, 
+            property_value=new_value, 
+            position=row_id)

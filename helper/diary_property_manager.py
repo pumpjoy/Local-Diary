@@ -39,13 +39,14 @@ class DiaryPropertyConfiguration:
             )
         return config_location
     
-    def get_data_directory(self):
+    def get_data_directory(self, year):
         """
         Gets the path to the 'data' subfolder within the config directory
         and ensures it exists.
         """
         config_dir = self._get_config_directory()
         data_dir = os.path.join(config_dir, "data")
+        data_dir = os.path.join(data_dir, year)
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         return data_dir
@@ -63,7 +64,7 @@ class DiaryPropertyConfiguration:
         else:
             if date is None:
                 raise ValueError("Date must be set when not in edit mode.")
-            self.config_dir = self.get_data_directory()
+            self.config_dir = self.get_data_directory(date[:4])
             self.config_file_path = os.path.join(self.config_dir, f"entry_{date}.json")
         
         self._ensure_config_directory_exists()

@@ -4,6 +4,9 @@
 
 # TODO: Will be reused to view individual day content
 
+import os
+import glob
+
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QSizePolicy,
@@ -184,17 +187,27 @@ class CustomPropertyWidget(QWidget):
                 }
                 data_to_save.append(row_data)
         
-        
         self.diary_manager.set_setting('dynamic_rows', data_to_save)
-        
-
-
         try:
             self.diary_manager.save_config()
+            self._save_entry_files() # NEW: TEST THIS
             print(f"CustomPropertyWidget: Template saved successfully to {self.diary_manager.config_file_path}")
         except Exception as e:
             print(f"CustomPropertyWidget: Error saving template: {e}")
             print(f"CustomPropertyWidget: Failed to save template to {self.diary_manager.config_file_path}")  
+
+    def _sync_entries(self, row_id: int):
+        """
+        Synchronizes the entries and template. 
+        Note: This only affects entries of THIS YEAR.
+        This assumes all checks are done individually by respective functions (delete, change, etc)
+        and its job is only to synchronize.
+        """
+        # 
+        dir_path = self.diary_manager._get_config_directory()
+
+        files = glob.glob(os.path.join(dir_path, ))
+        pass
 
     def _clear_all_rows(self):
         """Helper to clear all DraggableRowWidgets from the grid."""
@@ -253,6 +266,8 @@ class CustomPropertyWidget(QWidget):
             self.content_grid.addWidget(self.add_new_button_widget, current_grid_row, 0, 1, self.content_grid.columnCount())
         
         # Request layout to update itself to reflect changes
+        
+        self._save_template()
         self.content_grid.update()
 
     def update_theme_style(self, theme_name):
@@ -272,7 +287,7 @@ class CustomPropertyWidget(QWidget):
         Creates a new CustomRowWidget and adds it to grid.
         This method is called when user clicks "Add New" button.
         new row is always added just above 'Add New' button.
-        New: Position, to reuse this method during duplication of row.
+        NEW: Position, to reuse this method during duplication of row.
         @param: position (int) If add new row is not None, adds below position
         """  
         # Changed to follow row position

@@ -213,10 +213,10 @@ class MyWindow(QWidget):
                     widthis = cell_widget.get_width() 
                 else:
                     # Date cells
-                    full_date = this_month[(row - 1) * self.cal_month_num_cols + col]
+                    full_date = this_month[(row - 1) * self.cal_month_num_cols + col] 
                     dayis = f"{full_date.day}" 
-                    cell_widget = CalendarCellWidget(self.diary_config, widthis, dateis=f"{dayis}", full_date=full_date) 
-                    cell_widget.requested_view_entry.connect(lambda _, a=full_date: self._calendar_cell_clicked(full_date=a))
+                    cell_widget = CalendarCellWidget(self.diary_config, widthis, dateis=dayis, full_date=full_date) 
+                    cell_widget.requested_view_entry.connect(lambda _, a=full_date: self._calendar_cell_clicked(full_date=str(a)))
                     # Ask to update height of all cell_widgets in this row
 
 

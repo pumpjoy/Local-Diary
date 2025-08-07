@@ -224,7 +224,7 @@ class CalendarCellWidget(QWidget):
             # Check if file name exists
             if os.path.isfile(self.entry_path):
                 print("File path exists.")
-                print(self.full_date)
+                print(self.full_date) 
                 self.requested_view_entry.emit(self.full_date)
             else:
                 print("CalendarCellWidget: No entry found for this date")

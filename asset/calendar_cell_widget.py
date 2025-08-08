@@ -12,19 +12,19 @@ from asset.css_cheatsheet import(
     MAIN_PAGE_CAL_HEAD_MARGIN,
 )
 
+from helper.diary_property_manager import DiaryPropertyConfiguration
+
 class CalendarCellWidget(QWidget):
     
     # Signals to main's stacked widget to display CustomPropertyWidget 
     requested_view_entry = pyqtSignal(str)
     
 
-    def __init__(self, diary_manager, widthis, dateis="", full_date:datetime=None, is_today=False, *args, **kwargs):
+    def __init__(self, widthis, dateis="", full_date:datetime=None, is_today=False, *args, **kwargs):
         super().__init__(*args, **kwargs)  
-        self.diary_manager = diary_manager  
-        self.full_date=full_date.strftime('%Y-%m-%d')
-
+        self.diary_manager = DiaryPropertyConfiguration()
+        self.full_date=full_date.strftime('%Y-%m-%d') 
         self.entry_path = self.diary_manager.change_mode(edit_mode=False, date=self.full_date)
-            
 
         self.is_today = is_today 
         self.date_label_margin = 4
@@ -79,7 +79,7 @@ class CalendarCellWidget(QWidget):
         self.v_property_render.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.v_property_render.setContentsMargins(0, 0, 0, 0) 
         self.v_property_render.setSpacing(0) 
-        # Get and render entry based on date
+        # Get and render entry based on date 
         self._render_entry() 
         self.v_property_render.addStretch(1)
 
@@ -88,7 +88,7 @@ class CalendarCellWidget(QWidget):
         self.content_layout.addWidget(self.title_label)
         self.content_layout.addLayout(self.v_property_render)  
         self.content_layout.addStretch(1)
- 
+         
         # self.setMinimumHeight(self.sizeHint().height())
   
     def cus_set_text(self, text):
@@ -100,6 +100,12 @@ class CalendarCellWidget(QWidget):
     def today_style(self, style):
         self.date_label.setStyleSheet(style)
 
+    def update_date(self, full_date):
+        """Update the cell's date and re-render its properties."""
+        self.full_date = full_date.strftime('%Y-%m-%d')
+        self.entry_path = self.diary_manager.change_mode(edit_mode=False, date=self.full_date)
+        self._render_entry()
+
     def _add_new_entry(self):
         from PyQt6.QtWidgets import QMessageBox
         try:
@@ -110,14 +116,11 @@ class CalendarCellWidget(QWidget):
             Adds new entry date.json based on template. 
             Has built in duplication checks.
             Ensures existing data must never get overwritten."""
-            template_path = self.diary_manager.change_mode(edit_mode=True)
-            self.entry_path = self.diary_manager.change_mode(edit_mode=False, date=self.full_date) 
-            # self.entry_path = self.diary_manager.change_mode(edit_mode=False, date=self.full_date)
-            # Check if file name exists
+            template_path = self.diary_manager.change_mode(edit_mode=True) 
+            self.entry_path = self.diary_manager.change_mode(edit_mode=False, date=self.full_date)  
+
             if os.path.isfile(self.entry_path):
                 print("File path exists.")
-                print(f"Template path: {template_path}")
-                print(f"Entry path: {self.entry_path}")
                 # Check if has (1) behind it; check if it already has a copy
                 self.entry_path = Path(self.entry_path)
                 dir_path = self.entry_path.parent
@@ -153,9 +156,17 @@ class CalendarCellWidget(QWidget):
 
 
             """else: create a new file as per default"""
+            print(f"Template path: {template_path}")
+            print(f"Entry path: {self.entry_path}")# Check if file name exists
+
+            if os.path.isfile(template_path):
+                print("Template file is found")
+            else: 
+                print("Template file is not found.")
             shutil.copy(template_path, self.entry_path)
 
             # Add date into .json's date
+            self.diary_manager.load_config()
             self.diary_manager.set_setting('date', self.full_date)
             self.diary_manager.save_config()
 
@@ -167,11 +178,14 @@ class CalendarCellWidget(QWidget):
 
     def _render_entry(self):
         print("CalendarCellWidget: Rendering entry............")
+        
+        self.diary_manager.change_mode(edit_mode=False, date=self.full_date)
         self.diary_manager.load_config() 
+        # Clear widget
+        self._clear_all_widgets()
         if os.path.isfile(self.entry_path): 
             print(f"CalendarCellWidget: Entry for {self.full_date} found.")   
-            # Clear widget
-            self._clear_all_widgets()
+
             title = self.diary_manager.get_setting('title', [])
             # Literally don't need date, what am I doing.
             # date = self.diary_manager.get_setting('date', []) # TODO: fill this date automatically #TODO: date changes name of file! make sure to add index!

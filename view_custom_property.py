@@ -32,10 +32,9 @@ from helper.diary_property_manager import DiaryPropertyConfiguration
 # --- Custom Property Widget ---
 class CustomPropertyWidget(QWidget):
     """ Actually a view"""
-    reqeusted_back_to_main = pyqtSignal()
-    settings_saved = pyqtSignal() # Emitted after settings are saved to diary_manager
+    reqeusted_back_to_main = pyqtSignal() 
 
-    def __init__(self, config_manager, diary_manager, parent=None, edit_mode=False, date=None):
+    def __init__(self, config_manager, parent=None, edit_mode=False, date=None):
         """
         Initializes the CustomPropertyWidget.
         @param config_manager: Instance of DiaryPropertyConfiguration for managing settings.
@@ -48,7 +47,7 @@ class CustomPropertyWidget(QWidget):
         self.date = date # Date to view entries for, if in view mode
 
         self.config_manager = config_manager # For theme 
-        self.diary_manager = diary_manager # Store reference to diary manager 
+        self.diary_manager = DiaryPropertyConfiguration() # Store reference to diary manager 
         self.edit_mode = edit_mode # Whether in edit template mode 
 
         self._setup_edit_ui()

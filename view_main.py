@@ -45,8 +45,7 @@ class MyWindow(QWidget):
             organization_name="TestOrg",
             application_name="Local_Diary"
         )
-
-        self.diary_config = DiaryPropertyConfiguration()
+ 
 
         # Apply initial window size from config
         initial_window_size = self.app_config.get_setting('appearance.window_size', [800, 600])
@@ -87,8 +86,8 @@ class MyWindow(QWidget):
         
         self.main_page_widget = self._create_main_page_widget()
         self.settings_page_widget = SettingsPageWidget(self.app_config)
-        self.custom_property_page_widget = CustomPropertyWidget(self.app_config, self.diary_config) # 2 modes, either customize or view mode (reusing it)
-        self.custom_property_page_view_widget = CustomPropertyViewWidget()
+        self.custom_property_page_widget = CustomPropertyWidget(self.app_config)
+        # self.custom_property_page_view_widget = CustomPropertyViewWidget()
         
         self.stacked_widget = QStackedWidget(self)
         self.stacked_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -219,7 +218,7 @@ class MyWindow(QWidget):
                     # Date cells
                     full_date = this_month[(row - 1) * self.cal_month_num_cols + col] 
                     dayis = f"{full_date.day}" 
-                    cell_widget = CalendarCellWidget(self.diary_config, widthis, dateis=dayis, full_date=full_date) 
+                    cell_widget = CalendarCellWidget(widthis, dateis=dayis, full_date=full_date) 
                     cell_widget.requested_view_entry.connect(lambda _, a=full_date: self._calendar_cell_clicked(full_date=str(a)))
                     # Ask to update height of all cell_widgets in this row
 
@@ -268,6 +267,7 @@ class MyWindow(QWidget):
         """Switches the QStackedWidget to display the main application page."""
         # When switching from settings to main, ensure main page UI elements are updated
         self._update_ui_theme()
+        self._update_calendar_cells()
         self.stacked_widget.setCurrentIndex(self.main_page_index)
         self.setWindowTitle("Dynamic Cell Content & Settings Page")
  
@@ -367,7 +367,7 @@ class MyWindow(QWidget):
         elif mode == "today":
             this_date = datetime.datetime.now().date()
         elif mode == "next":
-            this_date = this_date + relativedelta(months=1)
+            this_date = this_date + relativedelta(months=1) 
          
         self.main_label.setText(this_date.strftime('%B %Y'))
         self.app_config.set_setting('current_month', this_date.isoformat()) 
@@ -386,17 +386,20 @@ class MyWindow(QWidget):
 
         # Update date cells (rows 1+)
         for row in range(1, self.cal_month_num_rows):
-            for col in range(self.cal_month_num_cols):
+            for col in range(self.cal_month_num_cols): 
                 cell_widget = self.calendar_widgets_reference.get((row, col))
+                
                 idx = (row - 1) * self.cal_month_num_cols + col
                 if cell_widget and idx < len(this_month):
-                    cell_date = this_month[idx] 
+                    cell_date = this_month[idx]  
                     
                     current_theme = self.app_config.get_setting('appearance.theme', 'dark') 
                     style = MAIN_CALENDAR_CELL_CSS.DAY_LIGHT if current_theme == 'light' else MAIN_CALENDAR_CELL_CSS.DAY_DARK      
 
                     cell_widget.cus_set_text(str(cell_date.day))
                     cell_widget.setStyleSheet(style)
+
+                    cell_widget.update_date(cell_date)
 
                     # Check if this cell is within the current month
                     if cell_date.month != this_date.month: 
@@ -410,10 +413,7 @@ class MyWindow(QWidget):
                     else:
                         if hasattr(cell_widget, "set_today"):
                             cell_widget.set_today(False)
-    
-    def _refresh_this_cell_(row, col):
 
-        pass
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -1,5 +1,3 @@
-# Havent prepare the actual file saving
-
 import datetime
 import json
 import os

@@ -4,6 +4,15 @@
 TYPES_OF_PROPERTIES = [
     "text", "number", "select", "multi_select", "status", "checkbox",
     ]
+
+PROPERTY_OPTIONS_COLOUR = [
+    "red", "blue", "green", "yellow"
+]
+PROPERTY_OPTIONS_COLOUR_HEX = [
+    "#FF8C00", "#ADD8E6", "#90EE90", "#FFFF00"
+]
+
+
 # Future can have  
 # created_by, last_modified_by,
 # created_time,  last_modified_time,

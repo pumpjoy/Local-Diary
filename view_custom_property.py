@@ -28,11 +28,9 @@ from asset.css_cheatsheet import (
 )
 
 from helper.diary_property_manager import DiaryPropertyConfiguration
-
-# --- Custom Property Widget ---
+ 
 class CustomPropertyWidget(QWidget):
-    """ Actually a view"""
-    reqeusted_back_to_main = pyqtSignal() 
+    """ Actually a view""" 
 
     def __init__(self, config_manager, parent=None, edit_mode=False, date=None):
         """
@@ -416,7 +414,7 @@ class CustomPropertyWidget(QWidget):
         """
         Creates a new CustomRowWidget and adds it to grid.
         This method is called when user clicks "Add New" button.
-        new row is always added just above 'Add New' button.
+        new row is always added just above 'Add New' button unless position is given.
         NEW: Position, to reuse this method during duplication of row.
         @param: position (int) If add new row is not None, adds below position
         """  

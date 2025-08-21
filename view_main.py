@@ -29,8 +29,7 @@ from asset.css_cheatsheet import (
     MAIN_CALENDAR_CELL_CSS,
 )
 from asset.calendar_cell_widget import CalendarCellWidget, CalendarHeaderWidget
-from view_custom_property import CustomPropertyWidget
-from view_custom_property_view import CustomPropertyViewWidget
+from view_custom_property import CustomPropertyWidget 
 
 class MyWindow(QWidget):
     def __init__(self):

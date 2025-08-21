@@ -32,6 +32,8 @@ from helper.diary_property_manager import DiaryPropertyConfiguration
 class CustomPropertyWidget(QWidget):
     """ Actually a view""" 
 
+    reqeusted_back_to_main = pyqtSignal()
+
     def __init__(self, config_manager, parent=None, edit_mode=False, date=None):
         """
         Initializes the CustomPropertyWidget.

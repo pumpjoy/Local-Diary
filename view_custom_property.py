@@ -496,12 +496,13 @@ class CustomPropertyWidget(QWidget):
             # This is because without closure, lambda captures the variable, not its value.
             # i.e. reference to property_type, 
             # not its value at the time of creation. (Hence final value of TYPES_OF_PROPERTIES)
+            # property_value - f"{t.capitalize().replace('_', ' ')} for {self.current_row_id}"
             options_text.triggered.connect(lambda checked, t=property_type: 
                                            self._add_new_row(
                                                 property_id=None,
                                                 property_key=f"{t.capitalize().replace('_', ' ')}",
                                                 property_type=t, 
-                                                property_value=f"{t.capitalize().replace('_', ' ')} for {self.current_row_id}"))
+                                                property_value=f""))
             options_menu.addAction(options_text)  
 
         button.setMenu(options_menu)
@@ -534,7 +535,6 @@ class CustomPropertyWidget(QWidget):
         return order
     
     
-
     # --- Custom Row Request Handling ---
     
     def update_updown_button_states(self):

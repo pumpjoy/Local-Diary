@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction, QIntValidator 
 
 from asset.css_cheatsheet import TYPES_OF_PROPERTIES  
+from asset.menu_edit_property import MenuEditProperty
 
 # --- Custom Row Widget ---
 class CustomRowWidget(QWidget):
@@ -175,6 +176,10 @@ class CustomRowWidget(QWidget):
         # Special: Menu for Text
         # New menu for text
         # menu_special = 1
+        menu_special = MenuEditProperty(self.property_id, self.property_key.text(), self.property_type, self.property_value)
+        menu_special._setup_edit_text_ui() 
+        menu_special.requested_menu_key_change.connect(self._rename_property_key)
+        menu.addMenu(menu_special)
 
         menu.addSeparator() 
 

@@ -9,35 +9,41 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QAction, QIntValidator 
 
 from asset.css_cheatsheet import TYPES_OF_PROPERTIES 
-from menu_option_widget import MenuOptionWidget
+from asset.menu_option_widget import MenuOptionWidget
 
-class MenuEditProperty(QWidget):
+class MenuEditProperty(QMenu):
     """
     A custom widget that displays options available in this property.
     Dynamically generates MenuOptionWidget based on
     PropertyOptionManager - property_id and property_type.
     
-    Is a Menu slot for CustomRowWidget 
+    Is a Menu slot for CustomRowWidget
     """
 
-    requested_menu_key_change = pyqtSignal(int, str) 
+    requested_menu_key_change = pyqtSignal(str) 
     requested_menu_type_change = pyqtSignal(int, str) 
     requested_menu_value_change = pyqtSignal(int, str) 
 
 
-    def __init__(self, 
-                 property_id, 
+    def __init__(self,
+                 property_id,
+                 property_key,
                  property_type,
                  property_value,
                  parent=None):
         super().__init__(parent)
         self.property_id = property_id 
+        self.property_key = property_key
         self.property_type = property_type
-        self.property_value = property_value
-        self.menu = QMenu(self) 
-
+        self.property_value = property_value 
+        self.setTitle("Edit Properties")
     
     # --- Per type ---
+    ### Text
+    def _setup_edit_text_ui(self):
+        """Edit-mode: Text UI"""
+        self._common_menu_items()
+
     ### Select
     def _setup_edit_select_ui(self):
         """Edit-mode: M/Select Properties UI
@@ -47,7 +53,7 @@ class MenuEditProperty(QWidget):
  
         menu_option_viewer = MenuOptionWidget()
         menu_option_widget = QWidgetAction(menu_option_viewer)
-        self.menu.addAction(menu_option_widget)
+        self.addAction(menu_option_widget)
     
     
     # ------ Common ------
@@ -56,18 +62,18 @@ class MenuEditProperty(QWidget):
 
         # Line Edit to change property_key/Name
         self.linedit_name = QLineEdit()
-        self.linedit_name.setText(self.property_value)
+        self.linedit_name.setText(self.property_key)
         self.linedit_name.returnPressed.connect(self.on_lineedit_enter_pressed)
-        lineedit_name_action = QWidgetAction(self.menu)
+        lineedit_name_action = QWidgetAction(self)
         lineedit_name_action.setDefaultWidget(self.linedit_name)
-        self.menu.addAction(lineedit_name_action)
+        self.addAction(lineedit_name_action)
 
         # Menu Property Type changer
         menu_property_type_change = self._generate_menu_types()
-        self.menu.addAction(menu_property_type_change)
+        self.addMenu(menu_property_type_change)
 
         # Separator
-        self.menu.addSeparator() 
+        self.addSeparator() 
 
     # --- Generate full menu for property_key ---
     def _generate_menu_types(self):
@@ -93,7 +99,7 @@ class MenuEditProperty(QWidget):
 
         # Updates property_value with entered text
         self.property_key = text 
-        self.requested_menu_key_change.emit(self.property_id, self.property_key)
+        self.requested_menu_key_change.emit(self.property_key)
 
     def _set_row_type(self, new_type: str):
         """

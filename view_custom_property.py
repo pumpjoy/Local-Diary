@@ -6,8 +6,15 @@
 
 import os
 import datetime
-import ast
 import json
+import copy
+
+# Check if the OS is Unix-like system
+if os.name == 'posix':
+    import fcntl
+# Check if the OS is Windows
+elif os.name == 'nt':
+    import msvcrt
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
@@ -141,9 +148,11 @@ class CustomPropertyWidget(QWidget):
         This is called when the widget is displayed.
         """ 
         print("CUSTOMPROPERTYWIDGET: LOAD EDIT MODE")
+        self._clear_all_rows() 
         self.date = None
         self.current_row_id  = 0
         self.edit_mode = True
+        self.diary_manager = DiaryPropertyConfiguration()
         self.diary_manager.change_mode(self.edit_mode) 
         self.diary_manager.load_config()
         self.main_label.setText("Customize Diary Property")
@@ -156,16 +165,30 @@ class CustomPropertyWidget(QWidget):
         Loads current diary property settings into the UI widgets.
         This is called when the widget is displayed.
         """
-        print("CUSTOMPROPERTYWIDGET: LOAD VIEW MODE")
+        print(f"CUSTOMPROPERTYWIDGET: LOAD VIEW MODE: {date}")
+        self._clear_all_rows() 
         self.date = date
         self.current_row_id  = 0
         self.edit_mode = False
+        self.diary_manager = DiaryPropertyConfiguration()
         self.diary_manager.change_mode(edit_mode=self.edit_mode, date=date)
         self.diary_manager.load_config()
         self.main_label.setText(f"Viewing Entry for {date}")
         self.title_edit.setText(self.diary_manager.get_setting('title', ''))
         self.date_edit.setDate(QDate.fromString(self.diary_manager.get_setting('date', ''), "dd/MM/yyyy"))
-        self._load_custom_row()
+        loda_rows = self.diary_manager.get_setting('dynamic_rows', [])
+        
+        self._clear_all_rows() 
+
+        if loda_rows:
+            for row_data in loda_rows:
+                property_id = row_data.get("property_id", None)
+                property_key = row_data.get("property_key", "Loaded Item")
+                property_type = row_data.get("property_type", "text")
+                property_value = row_data.get("property_value", "No Data Loaded")
+                self._add_new_row(property_id, property_key, property_type, property_value) 
+
+        self.update_updown_button_states()
 
 
     def _connect_signals(self):
@@ -200,8 +223,6 @@ class CustomPropertyWidget(QWidget):
         self.diary_manager.set_setting('dynamic_rows', data_to_save)
         try:
             self.diary_manager.save_config() 
-            # Synchronize the change to template and all entries in this year 
-            self._sync_entries()
             # print(f"CustomPropertyWidget: Template saved successfully to {self.diary_manager.config_file_path}")
         except Exception as e:
             print(f"CustomPropertyWidget: Error saving template: {e}")
@@ -209,127 +230,124 @@ class CustomPropertyWidget(QWidget):
 
     def _sync_entries(self):
         """
-        Synchronizes the entries and template. 
+        Synchronizes the entries and template.
         Note: This only affects entries of THIS YEAR.
         This assumes all checks are done individually by respective functions (delete, change, etc)
         and its job is only to synchronize.
         This is a standalone function meant to do exactly as that.
-        """ 
+        """
 
-        # 0. Template will check first, if current is template, skip template sync codes
         # 1. Get current widget setup, store the dynamic_row as list;
-        # 2. Get files that is not this file, get their list set up.
-        # 3. Check the differences by property_id, property_key and property_type
-        # 4. Get the difference ones, make changes accordingly (add, delete, move, change type)
-        def sync_rows(source_list, target_list, id_key='property_id', type_key = 'property_type'):
+        # This will act as the source of truth for others to match.
+        current_rows = self.diary_manager.get_setting('dynamic_rows', [])
+
+        def sync_rows(source_list, target_list):
             """
             Synchronizes a target list to match a source list based on a unique ID.
             Handles additions, deletions, updates, and reordering.
-            @param: source_list (list) The list of dictionaries that is the source of truth.
-            @param: target_list (list) The list of dictionaries to be synchronized.
-            @param: id_key, type_key (str) The key that holds the unique identifier. 
+            @param source_list (list): The list of dictionaries that is the source of truth.
+            @param target_list (list): The list of dictionaries to be synchronized.
             @returns: A new list that is fully synchronized with the source list.
             """
+            id_key = 'property_id'
+            type_key = 'property_type'
+            
             # Create a dictionary for fast lookups of items in the target list
             target_map = {item[id_key]: item for item in target_list if id_key in item}
             synchronized_list = []
-    
+
             # Iterate through the source list to build the new synchronized list
             for source_item in source_list:
-                # If item exists in source's id
-                # Changes has been done to the property id (that exists)
-                if id_key in source_item:
-                    source_id = source_item[id_key]
+                source_id = source_item[id_key]
 
-                    # If source id exists in target's id 
-                    # This effectively handles `delete_row` actions
-                    if source_id in target_map: 
-                        target_item = target_map[source_id]
+                if source_id in target_map:
+                    target_item = target_map[source_id]
 
-                        # Check if the property_type is the same
-                        if source_item.get(type_key) == target_item.get(type_key):
-                            # Type unchanged, preserve target's value, change key_key
-                            merged_item = source_item.copy()
-                            merged_item['property_value'] = target_item.get('property_value')
-                            synchronized_list.append(merged_item)
-                        else:
-                            # Type has changed, we use source item
-                            # Reminder: The moment type changes, the value is cleared anyway
-                            synchronized_list.append(source_item)
-                    else: 
-                        # This is a new item, add directly from source
-                        # This handles `add_new_row`
+                    # If ID and Type are the same, don't change the value.
+                    # This preserves user-entered data.
+                    if source_item.get(type_key) == target_item.get(type_key): 
+                        merging_item = {
+                            'property_id': source_item.get('property_id'),
+                            'property_key': source_item.get('property_key'),
+                            'property_type': source_item.get('property_type'),
+                            'property_value': target_item.get('property_value')
+                        }
+                        synchronized_list.append(merging_item)
+                    else:
+                        # If the type has changed, use the source item.
+                        # This effectively resets the value, as the old value
+                        # may not be compatible with the new type.
                         synchronized_list.append(source_item)
+                else:
+                    # The item is new, add it from the source list.
+                    synchronized_list.append(source_item)
 
-            # The whole thing handles movement changes in row 
             return synchronized_list
 
-        def actually_syncing(entry, edit_mode=False):
+        def actually_syncing(entry_path, edit_mode=False):
+            """Handles the file I/O and calls the sync_rows function."""
             try:
-                with open(entry, 'r+', encoding='utf-8') as f:
-                    entry_data = json.load(f) 
-                    entry_rows = entry_data.get('dynamic_rows', [])  
+                with open(entry_path, 'r', encoding='utf-8') as f:
+                    entry_data = json.load(f)
+                    entry_rows = entry_data.get('dynamic_rows', [])
 
-                    # 3. Check the differences by property_id, property_key and property_type
-                    entry_date = entry_data.get('date', "")
-                    print(f"ENTRY DATE IS {entry_date}")
-                    temp_manager = DiaryPropertyConfiguration()
-                    if edit_mode:
-                        temp_manager.change_mode(edit_mode=True)
-                    else:
-                        temp_manager.change_mode(edit_mode=edit_mode, date=entry_date)
-                    temp_manager.load_config()
-                    updated_rows = sync_rows(current_rows, entry_rows)
-                    temp_manager.set_setting('dynamic_rows', updated_rows)
-                    temp_manager.save_config()
+                # Get the date to correctly set the temporary manager's mode
+                entry_date = entry_data.get('date', "")
+                temp_manager = DiaryPropertyConfiguration()
+
+                if edit_mode:
+                    temp_manager.change_mode(edit_mode=True)
+                else:
+                    temp_manager.change_mode(edit_mode=False, date=entry_date)
+
+                temp_manager.load_config()
+                updated_rows = sync_rows(source_list=current_rows, target_list=entry_rows)
+                temp_manager.set_setting('dynamic_rows', updated_rows)
+                temp_manager.save_config()
 
             except (FileNotFoundError, json.JSONDecodeError) as e:
                 print(f"CustomPropertyWidget: Error getting current file config: {e}")
 
-        # 1. Get current widget setup, store the dynamic_row as list; 
-        # This will act as source for others to match
-        current_rows = self.diary_manager.get_setting('dynamic_rows', [])   
-        
-        if self.edit_mode == True:
+        if self.edit_mode:
             print("CUSTOMPROPERTYWIDGET: SYNC: Template Mode")
-            # 0. Template will check first, if current is template, skip template sync codes
-            # --- Sync to entries --- 
-            # Skip template sync codes, go straight to sync-ing entries    
-            # 2. Get files that is not this file, get their list set up.
-            # Reminder: CHANGE ONLY THIS YEAR!
+            # --- Sync from template to entries ---
+            data_dir = self.diary_manager.get_data_path(str(datetime.datetime.today().year))
             
-            data_dir = self.diary_manager.get_data_directory(str(datetime.datetime.today().year))
-            list_entries = [entry for entry in os.listdir(data_dir)] 
-            for entry in list_entries:
-                # Because diary_manager.change mode requires known date, and we don't know others' dates
-                # Instantly use json.load here  
-                entry = os.path.join(data_dir, entry)  
-                actually_syncing(entry)
-        else: 
-            print("CUSTOMPROPERTYWIDGET: SYNC: Entry Mode")
-            # Not template mode
-            # Entries have changes
-            # --- Sync to template ---
-            entry = self.diary_manager.get_diary_config_path()
-            actually_syncing(entry, edit_mode=True)
-            # Change back to current diary_manager 😥
-            
-            # --- Sync to other entries ---
-            data_dir = self.diary_manager.get_data_directory(str(datetime.datetime.today().year))
-            list_entries = [entry for entry in os.listdir(data_dir)] 
-            for entry in list_entries:
-                # Because diary_manager.change mode requires known date, and we don't know others' dates
-                # Instantly use json.load here
-                
-                # Check if entry is self, skip if yes
-                print(f"self.date: {self.date}, entry: {entry}")
-                if self.date in entry:
-                    print("SAME ENTRY SAME ENTRY")
-                    continue
-                entry = os.path.join(data_dir, entry)  
-                actually_syncing(entry)
- 
+            if not os.path.isdir(data_dir):
+                return
 
+            list_entries = os.listdir(data_dir)
+            for entry_file in list_entries:
+                entry_path = os.path.join(data_dir, entry_file)
+                actually_syncing(entry_path)
+
+        else:
+            print("CUSTOMPROPERTYWIDGET: SYNC: Entry Mode")
+            # --- Sync from entry to template ---
+            template_path = self.diary_manager.get_template_path()
+            actually_syncing(template_path, edit_mode=True)
+
+            # --- Sync from entry to other entries ---
+            data_dir = self.diary_manager.get_data_path(str(datetime.datetime.today().year))
+            
+            if not os.path.isdir(data_dir):
+                return
+
+            # Assuming self.file_path contains the full path of the current entry file
+            current_entry_path = self.diary_manager.get_data_path(str(datetime.datetime.today().year))
+            
+            list_entries = os.listdir(data_dir)
+            for entry_file in list_entries:
+                entry_path = os.path.join(data_dir, entry_file)
+
+                # CRITICAL FIX: Skip the current file to avoid self-syncing.
+                if entry_path == current_entry_path:
+                    continue
+                    
+                actually_syncing(entry_path)
+
+
+    
     def _clear_all_rows(self):
         """Helper to clear all DraggableRowWidgets from the grid."""
         current_order_ids = self._get_current_order()
@@ -343,13 +361,12 @@ class CustomPropertyWidget(QWidget):
         Loads the dynamic row data (the template) from the config manager
         and populates the grid. Called once on application startup.
         """
-        loaded_template_data = self.diary_manager.get_setting('dynamic_rows', [])
+        loda_rows = self.diary_manager.get_setting('dynamic_rows', [])
         
         self._clear_all_rows() 
 
-        if loaded_template_data:
-            print(f"CustomPropertyWidget: Loading {len(loaded_template_data)} dynamic rows (template) from config.")
-            for row_data in loaded_template_data:
+        if loda_rows:
+            for row_data in loda_rows:
                 property_id = row_data.get("property_id", None)
                 property_key = row_data.get("property_key", "Loaded Item")
                 property_type = row_data.get("property_type", "text")
@@ -452,7 +469,6 @@ class CustomPropertyWidget(QWidget):
         custom_row_widget.requested_duplicate_no_content.connect(self.duplicate_row_no_content)
         custom_row_widget.requested_duplicate_with_content.connect(self.duplicate_row_with_content)
 
-        
         current_order = self._get_current_order() 
         if position is None:
             # New item

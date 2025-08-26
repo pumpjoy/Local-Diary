@@ -37,7 +37,7 @@ class DiaryPropertyConfiguration:
             )
         return config_location
     
-    def get_data_directory(self, year):
+    def get_data_path(self, year):
         """
         Gets the path to the 'data' subfolder within the config directory
         and ensures it exists.
@@ -49,7 +49,7 @@ class DiaryPropertyConfiguration:
             os.makedirs(data_dir) 
         return data_dir
 
-    def get_diary_config_path(self):
+    def get_template_path(self):
         path = self._get_config_directory()
         path = os.path.join(path, "diary_property.json")
         return path
@@ -67,8 +67,8 @@ class DiaryPropertyConfiguration:
         else:
             if date is None:
                 raise ValueError("DiaryPropertyConfiguration: Date must be set when not in edit mode.")
-            self.config_dir = self.get_data_directory(date[:4])
-            print(self.config_dir)
+            self.config_dir = self.get_data_path(date[:4])
+            # print(self.config_dir)
             self.config_file_path = os.path.join(self.config_dir, f"entry_{date}.json")
         
         self._ensure_config_directory_exists()
@@ -91,7 +91,7 @@ class DiaryPropertyConfiguration:
             try:
                 with open(self.config_file_path, 'r', encoding='utf-8') as f:
                     self.config_data = json.load(f)
-                print(f"DiaryPropertyConfiguration: Configuration loaded from: {self.config_file_path}")
+                # print(f"DiaryPropertyConfiguration: Configuration loaded from: {self.config_file_path}")
             except json.JSONDecodeError as e:
                 # Handle cases where the JSON file is malformed
                 print(f"DiaryPropertyConfiguration: Error: Error loading config file (JSON decode error): {e}")
@@ -102,10 +102,10 @@ class DiaryPropertyConfiguration:
                 print(f"DiaryPropertyConfiguration: Error: Error loading config file: {e}")
                 print("Initializing with default settings.")
                 self.config_data = self._get_default_config()
-        else:
+        # else:
             # File doesn't exist, so initialize with defaults
-            print(f"DiaryPropertyConfiguration: Config file not found: {self.config_file_path}. Initializing with default settings.")
-            self.config_data = self._get_default_config()
+            # print(f"DiaryPropertyConfiguration: Config file not found: {self.config_file_path}. Initializing with default settings.")
+            # self.config_data = self._get_default_config()
 
     def save_config(self):
         """

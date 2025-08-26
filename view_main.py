@@ -17,8 +17,7 @@ from dateutil.relativedelta import relativedelta
 
 
 from helper.utils import *
-from helper.config_manager import UserConfiguration
-from helper.diary_property_manager import DiaryPropertyConfiguration
+from helper.config_manager import UserConfiguration 
 
 from view_setting import SettingsPageWidget
 
@@ -285,12 +284,10 @@ class MyWindow(QWidget):
         @param: date (str) Follow up parameter, to tell CustomPropertyWidget to display the entry based on the date. 
         """
         # Tell custom property page to load fresh data from config before showing it
-        if entry_mode: 
-            print("Entry Mode")  
+        if entry_mode:  
             self.custom_property_page_widget.load_view_mode_into_ui(date=date)
             self.stacked_widget.setCurrentIndex(self.custom_diary_property_index) 
-        else:
-            print("Template Mode")
+        else: 
             self.custom_property_page_widget.load_edit_mode_into_ui()
             self.stacked_widget.setCurrentIndex(self.custom_diary_property_index) 
 
@@ -299,7 +296,7 @@ class MyWindow(QWidget):
         Getting requested_view_entry signals from Calendar Cell.
         Changes view (stacked widget) to view CustomPropertyWidget(entry_mode=True)
         """
-        print("Main: Received signal from CalendarCell. Request to view entry using CustomPropertyWidget")
+        # print("Main: Received signal from CalendarCell. Request to view entry using CustomPropertyWidget")
         self._show_custom_property_page(entry_mode=True, date=full_date)
 
     # --- Methods to react to settings changes ---

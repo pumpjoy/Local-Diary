@@ -36,7 +36,7 @@ class CalendarCellWidget(QWidget):
         self.parent_layout = QVBoxLayout(self)
         self.parent_layout.setContentsMargins(0, 0, 0, 0)
         self.parent_layout.setSpacing(0)
-        self.main_layout = QGroupBox(self) 
+        self.main_layout = QGroupBox(self)
         self.parent_layout.addWidget(self.main_layout)
 
         self.content_layout = QVBoxLayout(self.main_layout)
@@ -156,11 +156,12 @@ class CalendarCellWidget(QWidget):
 
 
             """else: create a new file as per default"""
-            print(f"Template path: {template_path}")
-            print(f"Entry path: {self.entry_path}")# Check if file name exists
+            # print(f"Template path: {template_path}")
+            # print(f"Entry path: {self.entry_path}")# Check if file name exists
 
             if os.path.isfile(template_path):
-                print("Template file is found")
+                # print("Template file is found")
+                print("")
             else: 
                 print("Template file is not found.")
             shutil.copy(template_path, self.entry_path)
@@ -176,8 +177,7 @@ class CalendarCellWidget(QWidget):
             print(f"An error occurred: {str(e)}")
             QMessageBox.critical(None, "Error", f"An error occurred: {str(e)}")
 
-    def _render_entry(self):
-        print("CalendarCellWidget: Rendering entry............")
+    def _render_entry(self): 
         
         self.diary_manager.change_mode(edit_mode=False, date=self.full_date)
         self.diary_manager.load_config() 
@@ -190,7 +190,7 @@ class CalendarCellWidget(QWidget):
             # Literally don't need date, what am I doing.
             # date = self.diary_manager.get_setting('date', []) # TODO: fill this date automatically #TODO: date changes name of file! make sure to add index!
             load_data = self.diary_manager.get_setting('dynamic_rows', [])
-            print(load_data)
+            # print(load_data)
             self.next_row_id = 0
 
             if load_data:
@@ -204,7 +204,8 @@ class CalendarCellWidget(QWidget):
                         property_key=property_key, property_type=property_type,property_value=property_value)
                     self.v_property_render.addWidget(label)
             else:
-                print("CalendarCellWidget: No dynamic rows (template) found in config. Starting with an empty template.")
+                # print("CalendarCellWidget: No dynamic rows (template) found in config. Starting with an empty template.")
+                print("")
 
             # Render individual based on property_type
             # for row_data in 

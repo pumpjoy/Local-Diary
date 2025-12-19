@@ -267,7 +267,7 @@ class MyWindow(QWidget):
         self._update_ui_theme()
         self._update_calendar_cells()
         self.stacked_widget.setCurrentIndex(self.main_page_index)
-        self.setWindowTitle("Dynamic Cell Content & Settings Page")
+        self.setWindowTitle("Local Diary")
  
     def _show_settings_page(self):
         """Switches the QStackedWidget to display the settings page."""

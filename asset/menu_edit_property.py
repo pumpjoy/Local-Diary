@@ -44,6 +44,11 @@ class MenuEditProperty(QMenu):
         """Edit-mode: Text UI"""
         self._common_menu_items()
 
+    ### Number
+    def _setup_edit_number_ui(self):
+        """Edit-mode: Number UI"""
+        self._common_menu_items()
+
     ### Select
     def _setup_edit_select_ui(self):
         """Edit-mode: M/Select Properties UI
